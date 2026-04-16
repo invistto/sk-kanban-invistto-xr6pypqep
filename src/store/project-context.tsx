@@ -76,6 +76,7 @@ interface ProjectContextType {
   addColumn: (name: string) => Promise<void>
   updateColumn: (id: string, name: string) => Promise<void>
   deleteColumn: (id: string) => Promise<void>
+  reorderColumns: (reorderedCols: Column[]) => Promise<void>
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined)
@@ -166,6 +167,16 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       name,
       owner_id: user.id,
     })
+
+    const defaultCols = ['A Fazer', 'Em Progresso', 'Concluído']
+    for (let i = 0; i < defaultCols.length; i++) {
+      await pb.collection('columns').create({
+        board_id: newBoard.id,
+        name: defaultCols[i],
+        order: i,
+      })
+    }
+
     setActiveBoardId(newBoard.id)
   }
 
@@ -184,6 +195,13 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
 
   const deleteColumn = async (id: string) => {
     await pb.collection('columns').delete(id)
+  }
+
+  const reorderColumns = async (reorderedCols: Column[]) => {
+    setColumns(reorderedCols)
+    for (const col of reorderedCols) {
+      await pb.collection('columns').update(col.id, { order: col.order })
+    }
   }
 
   const moveTask = async (taskId: string, targetColumnId: string) => {
@@ -252,6 +270,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         addColumn,
         updateColumn,
         deleteColumn,
+        reorderColumns,
       }}
     >
       {children}
