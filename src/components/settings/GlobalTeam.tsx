@@ -1,5 +1,6 @@
 import { useProject } from '@/store/project-context'
 import { Button } from '@/components/ui/button'
+import pb from '@/lib/pocketbase/client'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   Table,
@@ -25,12 +26,20 @@ export function GlobalTeam() {
     if (!email) return
     setIsInviting(true)
     try {
-      // Simulate sending invite (since standard auth collection creation requires special handling)
-      await new Promise((r) => setTimeout(r, 800))
-      toast({ title: 'Convite enviado!', description: `Um email foi enviado para ${email}` })
+      await pb.collection('users').create({
+        email,
+        password: 'TemporaryPassword123!',
+        passwordConfirm: 'TemporaryPassword123!',
+        name: email.split('@')[0],
+      })
+      toast({
+        title: 'Usuário adicionado!',
+        description: `O usuário ${email} foi adicionado à equipe global.`,
+      })
       setEmail('')
-    } catch {
-      toast({ title: 'Erro ao enviar convite', variant: 'destructive' })
+    } catch (err: any) {
+      console.error(err)
+      toast({ title: 'Erro ao adicionar usuário', variant: 'destructive' })
     } finally {
       setIsInviting(false)
     }

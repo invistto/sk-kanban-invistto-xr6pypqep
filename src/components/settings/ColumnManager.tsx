@@ -67,9 +67,9 @@ export function ColumnManager() {
       await addColumn(newColName)
       setNewColName('')
       setIsAdding(false)
-      toast({ title: 'Coluna adicionada' })
+      toast({ title: 'Coluna criada com sucesso!' })
     } catch {
-      toast({ title: 'Erro ao adicionar coluna', variant: 'destructive' })
+      toast({ title: 'Erro ao criar coluna', variant: 'destructive' })
     } finally {
       setIsSubmitting(false)
     }
@@ -81,9 +81,9 @@ export function ColumnManager() {
     const reordered = localColumns.map((col, i) => ({ ...col, order: i }))
     try {
       await reorderColumns(reordered)
-      toast({ title: 'Colunas reordenadas' })
+      toast({ title: 'Colunas reordenadas com sucesso!' })
     } catch {
-      toast({ title: 'Erro ao reordenar', variant: 'destructive' })
+      toast({ title: 'Erro ao reordenar colunas', variant: 'destructive' })
     }
   }
 

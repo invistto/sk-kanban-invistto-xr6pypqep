@@ -232,7 +232,13 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     setColumns(reorderedCols)
     try {
       await Promise.all(
-        reorderedCols.map((col) => pb.collection('columns').update(col.id, { order: col.order })),
+        reorderedCols.map((col) =>
+          pb.collection('columns').update(col.id, {
+            order: col.order,
+            name: col.name,
+            board_id: col.board_id,
+          }),
+        ),
       )
     } catch (e) {
       if (activeBoardId) loadBoardData(activeBoardId)

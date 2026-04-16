@@ -10,21 +10,41 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useToast } from '@/hooks/use-toast'
 
 export default function Index() {
-  const { tasks, columns, moveTask, addTask, addColumn } = useProject()
+  const { boards, activeBoardId, tasks, columns, moveTask, addTask, addColumn, reorderColumns } =
+    useProject()
   const [addingToColumn, setAddingToColumn] = useState<string | null>(null)
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [isAddingColumn, setIsAddingColumn] = useState(false)
   const [newColumnName, setNewColumnName] = useState('')
   const [isSubmittingColumn, setIsSubmittingColumn] = useState(false)
   const [isSubmittingTask, setIsSubmittingTask] = useState(false)
+  const { toast } = useToast()
 
-  const handleDrop = (e: React.DragEvent, columnId: string) => {
+  const activeBoard = boards.find((b) => b.id === activeBoardId)
+
+  const handleDrop = (e: React.DragEvent, columnId: string, dropColIndex: number) => {
     e.preventDefault()
     const taskId = e.dataTransfer.getData('taskId')
+    const colIndexStr = e.dataTransfer.getData('colIndex')
+
     if (taskId) {
-      moveTask(taskId, columnId)
+      moveTask(taskId, columnId).catch(() => {
+        toast({ title: 'Erro ao mover tarefa', variant: 'destructive' })
+      })
+    } else if (colIndexStr) {
+      const dragIndex = parseInt(colIndexStr, 10)
+      if (dragIndex !== dropColIndex && !isNaN(dragIndex)) {
+        const newCols = [...columns]
+        const [dragged] = newCols.splice(dragIndex, 1)
+        newCols.splice(dropColIndex, 0, dragged)
+        const reordered = newCols.map((c, i) => ({ ...c, order: i }))
+        reorderColumns(reordered)
+          .then(() => toast({ title: 'Colunas reordenadas com sucesso!' }))
+          .catch(() => toast({ title: 'Erro ao reordenar colunas', variant: 'destructive' }))
+      }
     }
   }
 
@@ -39,6 +59,9 @@ export default function Index() {
         await addTask(columnId, newTaskTitle)
         setNewTaskTitle('')
         setAddingToColumn(null)
+        toast({ title: 'Tarefa adicionada com sucesso!' })
+      } catch (error) {
+        toast({ title: 'Erro ao adicionar tarefa', variant: 'destructive' })
       } finally {
         setIsSubmittingTask(false)
       }
@@ -52,20 +75,34 @@ export default function Index() {
         await addColumn(newColumnName)
         setNewColumnName('')
         setIsAddingColumn(false)
+        toast({ title: 'Coluna criada com sucesso!' })
       } catch (error) {
         console.error(error)
+        toast({ title: 'Erro ao criar coluna', variant: 'destructive' })
       } finally {
         setIsSubmittingColumn(false)
       }
     }
   }
 
+  const handleColDragStart = (e: React.DragEvent, index: number) => {
+    e.dataTransfer.setData('colIndex', index.toString())
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  if (!activeBoardId) {
+    return (
+      <div className="flex h-full items-center justify-center text-muted-foreground flex-col gap-4">
+        <p>Selecione ou crie um quadro na barra lateral para começar.</p>
+      </div>
+    )
+  }
+
   return (
     <div className="h-full w-full flex flex-col">
       <div className="px-6 py-4 flex-shrink-0 flex items-center justify-between border-b bg-background/50">
-        <h1 className="text-2xl font-bold tracking-tight">Quadro Principal</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{activeBoard?.name || 'Quadro'}</h1>
         <div className="flex items-center gap-2">
-          {/* Filters would go here */}
           <Button variant="outline" size="sm">
             Filtros
           </Button>
@@ -74,17 +111,19 @@ export default function Index() {
 
       <div className="flex-1 overflow-x-auto kanban-scrollbar p-6">
         <div className="flex h-full items-start gap-6 pb-4">
-          {columns.map((column) => {
+          {columns.map((column, index) => {
             const columnTasks = tasks.filter((t) => t.columnId === column.id)
 
             return (
               <div
                 key={column.id}
+                draggable
+                onDragStart={(e) => handleColDragStart(e, index)}
                 className="flex h-full w-[320px] shrink-0 flex-col rounded-xl bg-muted/40"
-                onDrop={(e) => handleDrop(e, column.id)}
+                onDrop={(e) => handleDrop(e, column.id, index)}
                 onDragOver={handleDragOver}
               >
-                <div className="flex items-center justify-between p-3 px-4">
+                <div className="flex items-center justify-between p-3 px-4 cursor-grab active:cursor-grabbing">
                   <div className="flex items-center gap-2">
                     <h3 className="font-semibold text-sm">{column.name}</h3>
                     <span className="flex h-5 items-center justify-center rounded-full bg-muted-foreground/20 px-2 text-xs font-medium text-muted-foreground">
