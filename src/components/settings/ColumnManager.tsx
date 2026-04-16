@@ -75,7 +75,7 @@ export function ColumnManager() {
     setIsSubmitting(true)
     try {
       const currentOrders = localColumns.map((c) => (typeof c.order === 'number' ? c.order : 0))
-      const order = currentOrders.length > 0 ? Math.max(...currentOrders) + 1 : 0
+      const order = currentOrders.length > 0 ? Math.max(...currentOrders) + 1 : 1
 
       if (typeof order !== 'number' || isNaN(order)) {
         toast({
@@ -112,7 +112,7 @@ export function ColumnManager() {
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault()
     setDraggedIndex(null)
-    const reordered = localColumns.map((col, i) => ({ ...col, order: i }))
+    const reordered = localColumns.map((col, i) => ({ ...col, order: i + 1 }))
     try {
       await reorderColumns(reordered)
       toast({ title: 'Colunas reordenadas com sucesso!' })

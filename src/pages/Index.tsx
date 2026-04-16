@@ -15,7 +15,8 @@ import pb from '@/lib/pocketbase/client'
 import { extractFieldErrors, getErrorMessage } from '@/lib/pocketbase/errors'
 
 export default function Index() {
-  const { boards, activeBoardId, tasks, columns, moveTask, addTask, reorderColumns } = useProject()
+  const { boards, activeBoardId, tasks, columns, moveTask, addTask, addColumn, reorderColumns } =
+    useProject()
   const [addingToColumn, setAddingToColumn] = useState<string | null>(null)
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [isAddingColumn, setIsAddingColumn] = useState(false)
@@ -41,7 +42,7 @@ export default function Index() {
         const newCols = [...columns]
         const [dragged] = newCols.splice(dragIndex, 1)
         newCols.splice(dropColIndex, 0, dragged)
-        const reordered = newCols.map((c, i) => ({ ...c, order: i }))
+        const reordered = newCols.map((c, i) => ({ ...c, order: i + 1 }))
         reorderColumns(reordered)
           .then(() => toast({ title: 'Colunas reordenadas com sucesso!' }))
           .catch(() => toast({ title: 'Erro ao reordenar colunas', variant: 'destructive' }))
@@ -77,12 +78,7 @@ export default function Index() {
       }
       setIsSubmittingColumn(true)
       try {
-        const order = columns.length > 0 ? Math.max(...columns.map((c) => c.order)) + 1 : 0
-        await pb.collection('columns').create({
-          board_id: activeBoardId,
-          name: newColumnName,
-          order,
-        })
+        await addColumn(newColumnName.trim())
         setNewColumnName('')
         setIsAddingColumn(false)
         toast({ title: 'Coluna criada com sucesso!' })

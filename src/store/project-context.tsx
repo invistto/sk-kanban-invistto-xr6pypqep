@@ -206,7 +206,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
           pb.collection('columns').create({
             board_id: newBoard.id,
             name: colName,
-            order: i,
+            order: i + 1,
           }),
         ),
       )
@@ -225,10 +225,18 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
 
   const addColumn = async (name: string) => {
     if (!activeBoardId) throw new Error('Nenhum quadro ativo selecionado.')
+
+    const currentOrders = columns.map((c) => (typeof c.order === 'number' ? c.order : 0))
+    const order = currentOrders.length > 0 ? Math.max(...currentOrders) + 1 : 1
+
+    if (typeof order !== 'number' || isNaN(order)) {
+      throw new Error('Falha ao calcular a ordem da coluna.')
+    }
+
     await pb.collection('columns').create({
       board_id: activeBoardId,
       name,
-      order: columns.length,
+      order,
     })
   }
 
