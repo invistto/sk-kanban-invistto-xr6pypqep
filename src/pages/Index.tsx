@@ -113,7 +113,9 @@ export default function Index() {
             if (latestTask && latestTask.id) {
               setSelectedTaskId(latestTask.id)
             }
-          } catch (_) {}
+          } catch (err) {
+            console.error('Failed to fetch latest task:', err)
+          }
         }
       } catch (error) {
         toast({ title: 'Erro ao adicionar tarefa', variant: 'destructive' })
