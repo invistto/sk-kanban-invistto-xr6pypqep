@@ -17,6 +17,8 @@ export default function Index() {
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [isAddingColumn, setIsAddingColumn] = useState(false)
   const [newColumnName, setNewColumnName] = useState('')
+  const [isSubmittingColumn, setIsSubmittingColumn] = useState(false)
+  const [isSubmittingTask, setIsSubmittingTask] = useState(false)
 
   const handleDrop = (e: React.DragEvent, columnId: string) => {
     e.preventDefault()
@@ -30,19 +32,31 @@ export default function Index() {
     e.preventDefault()
   }
 
-  const handleAddTask = (columnId: string) => {
+  const handleAddTask = async (columnId: string) => {
     if (newTaskTitle.trim()) {
-      addTask(columnId, newTaskTitle)
-      setNewTaskTitle('')
-      setAddingToColumn(null)
+      setIsSubmittingTask(true)
+      try {
+        await addTask(columnId, newTaskTitle)
+        setNewTaskTitle('')
+        setAddingToColumn(null)
+      } finally {
+        setIsSubmittingTask(false)
+      }
     }
   }
 
   const handleAddColumn = async () => {
     if (newColumnName.trim()) {
-      await addColumn(newColumnName)
-      setNewColumnName('')
-      setIsAddingColumn(false)
+      setIsSubmittingColumn(true)
+      try {
+        await addColumn(newColumnName)
+        setNewColumnName('')
+        setIsAddingColumn(false)
+      } catch (error) {
+        console.error(error)
+      } finally {
+        setIsSubmittingColumn(false)
+      }
     }
   }
 
@@ -108,11 +122,20 @@ export default function Index() {
                         className="text-sm h-8"
                       />
                       <div className="flex items-center gap-2 justify-end">
-                        <Button variant="ghost" size="sm" onClick={() => setAddingToColumn(null)}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setAddingToColumn(null)}
+                          disabled={isSubmittingTask}
+                        >
                           Cancelar
                         </Button>
-                        <Button size="sm" onClick={() => handleAddTask(column.id)}>
-                          Adicionar
+                        <Button
+                          size="sm"
+                          onClick={() => handleAddTask(column.id)}
+                          disabled={isSubmittingTask}
+                        >
+                          {isSubmittingTask ? 'Adicionando...' : 'Adicionar'}
                         </Button>
                       </div>
                     </div>
@@ -141,11 +164,16 @@ export default function Index() {
                 className="bg-card text-sm h-9"
               />
               <div className="flex gap-2 justify-end">
-                <Button variant="ghost" size="sm" onClick={() => setIsAddingColumn(false)}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsAddingColumn(false)}
+                  disabled={isSubmittingColumn}
+                >
                   Cancelar
                 </Button>
-                <Button size="sm" onClick={handleAddColumn}>
-                  Adicionar
+                <Button size="sm" onClick={handleAddColumn} disabled={isSubmittingColumn}>
+                  {isSubmittingColumn ? 'Adicionando...' : 'Adicionar'}
                 </Button>
               </div>
             </div>

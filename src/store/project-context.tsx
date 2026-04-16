@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import pb from '@/lib/pocketbase/client'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useAuth } from '@/hooks/use-auth'
@@ -60,18 +60,18 @@ interface ProjectContextType {
   boards: Board[]
   activeBoardId: string | null
   setActiveBoardId: (id: string) => void
-  createBoard: (name: string) => Promise<void>
+  createBoard: (name: string) => Promise<Board>
 
   tasks: Task[]
   columns: Column[]
   members: User[]
   selectedTaskId: string | null
   setSelectedTaskId: (id: string | null) => void
-  moveTask: (taskId: string, targetColumnId: string) => void
-  updateTask: (taskId: string, updates: Partial<Task>) => void
-  addTask: (columnId: string, title: string) => void
-  updateSubtask: (subtaskId: string, completed: boolean) => void
-  addComment: (taskId: string, content: string) => void
+  moveTask: (taskId: string, targetColumnId: string) => Promise<void>
+  updateTask: (taskId: string, updates: Partial<Task>) => Promise<void>
+  addTask: (columnId: string, title: string) => Promise<void>
+  updateSubtask: (subtaskId: string, completed: boolean) => Promise<void>
+  addComment: (taskId: string, content: string) => Promise<void>
 
   addColumn: (name: string) => Promise<void>
   updateColumn: (id: string, name: string) => Promise<void>
@@ -106,20 +106,16 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const loadBoardData = async () => {
-    if (!activeBoardId) {
-      setColumns([])
-      setTasksRaw([])
-      return
-    }
+  const loadBoardData = useCallback(async (boardId: string) => {
+    if (!boardId) return
     try {
       const [cols, tsks, chks, cmmts, users] = await Promise.all([
         pb
           .collection('columns')
-          .getFullList<Column>({ filter: `board_id="${activeBoardId}"`, sort: 'order' }),
+          .getFullList<Column>({ filter: `board_id="${boardId}"`, sort: 'order' }),
         pb
           .collection('tasks')
-          .getFullList<TaskRecord>({ filter: `board_id="${activeBoardId}"`, sort: 'order' }),
+          .getFullList<TaskRecord>({ filter: `board_id="${boardId}"`, sort: 'order' }),
         pb.collection('checklists').getFullList<Checklist>(),
         pb.collection('comments').getFullList<Comment>({ sort: 'created' }),
         pb.collection('users').getFullList<User>(),
@@ -131,9 +127,9 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       setComments(cmmts)
       setMembers(users)
     } catch (e) {
-      console.error(e)
+      console.error('Failed to load board data:', e)
     }
-  }
+  }, [])
 
   useEffect(() => {
     loadBoards()
@@ -141,15 +137,27 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (activeBoardId) {
-      loadBoardData()
+      // Clear data to prevent stale state from previous board
+      setColumns([])
+      setTasksRaw([])
+      loadBoardData(activeBoardId)
+    } else {
+      setColumns([])
+      setTasksRaw([])
     }
-  }, [activeBoardId])
+  }, [activeBoardId, loadBoardData])
+
+  const handleRealtimeUpdate = useCallback(() => {
+    if (activeBoardId) {
+      loadBoardData(activeBoardId)
+    }
+  }, [activeBoardId, loadBoardData])
 
   useRealtime('boards', loadBoards, !!user)
-  useRealtime('columns', loadBoardData, !!activeBoardId)
-  useRealtime('tasks', loadBoardData, !!activeBoardId)
-  useRealtime('checklists', loadBoardData, !!activeBoardId)
-  useRealtime('comments', loadBoardData, !!activeBoardId)
+  useRealtime('columns', handleRealtimeUpdate, !!activeBoardId)
+  useRealtime('tasks', handleRealtimeUpdate, !!activeBoardId)
+  useRealtime('checklists', handleRealtimeUpdate, !!activeBoardId)
+  useRealtime('comments', handleRealtimeUpdate, !!activeBoardId)
 
   const tasks: Task[] = tasksRaw.map((t) => ({
     ...t,
@@ -162,7 +170,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   }))
 
   const createBoard = async (name: string) => {
-    if (!user) return
+    if (!user) throw new Error('Unauthenticated')
     const newBoard = await pb.collection('boards').create<Board>({
       name,
       owner_id: user.id,
@@ -178,10 +186,11 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     }
 
     setActiveBoardId(newBoard.id)
+    return newBoard
   }
 
   const addColumn = async (name: string) => {
-    if (!activeBoardId) return
+    if (!activeBoardId) throw new Error('Nenhum quadro ativo selecionado.')
     await pb.collection('columns').create({
       board_id: activeBoardId,
       name,
@@ -198,9 +207,17 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   }
 
   const reorderColumns = async (reorderedCols: Column[]) => {
+    // Optimistic UI update
     setColumns(reorderedCols)
-    for (const col of reorderedCols) {
-      await pb.collection('columns').update(col.id, { order: col.order })
+    try {
+      const promises = reorderedCols.map((col) =>
+        pb.collection('columns').update(col.id, { order: col.order }),
+      )
+      await Promise.all(promises)
+    } catch (e) {
+      // Revert if error occurs (realtime will fix it or we reload manually)
+      if (activeBoardId) loadBoardData(activeBoardId)
+      throw e
     }
   }
 

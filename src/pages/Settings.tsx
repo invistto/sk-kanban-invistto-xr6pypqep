@@ -11,7 +11,14 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Settings as SettingsIcon, GripVertical, UserPlus, Trash2, Plus } from 'lucide-react'
+import {
+  Settings as SettingsIcon,
+  GripVertical,
+  UserPlus,
+  Trash2,
+  Plus,
+  Loader2,
+} from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useToast } from '@/hooks/use-toast'
 
@@ -81,6 +88,7 @@ export default function Settings() {
   const { toast } = useToast()
   const [newColName, setNewColName] = useState('')
   const [isAdding, setIsAdding] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [localColumns, setLocalColumns] = useState<Column[]>([])
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
 
@@ -109,12 +117,16 @@ export default function Settings() {
 
   const handleAddColumn = async () => {
     if (!newColName.trim()) return
+    setIsSubmitting(true)
     try {
       await addColumn(newColName)
       setNewColName('')
       setIsAdding(false)
+      toast({ title: 'Coluna adicionada com sucesso!' })
     } catch (e) {
       toast({ title: 'Erro ao adicionar', variant: 'destructive' })
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -145,6 +157,7 @@ export default function Settings() {
     const reordered = localColumns.map((col, i) => ({ ...col, order: i }))
     try {
       await reorderColumns(reordered)
+      toast({ title: 'Colunas reordenadas com sucesso!' })
     } catch (err) {
       toast({ title: 'Erro ao reordenar', variant: 'destructive' })
     }
@@ -199,11 +212,12 @@ export default function Settings() {
                   onChange={(e) => setNewColName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAddColumn()}
                   className="max-w-md bg-background"
+                  disabled={isSubmitting}
                 />
-                <Button onClick={handleAddColumn} className="ml-2">
-                  Salvar
+                <Button onClick={handleAddColumn} className="ml-2" disabled={isSubmitting}>
+                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salvar'}
                 </Button>
-                <Button variant="ghost" onClick={() => setIsAdding(false)}>
+                <Button variant="ghost" onClick={() => setIsAdding(false)} disabled={isSubmitting}>
                   Cancelar
                 </Button>
               </div>
