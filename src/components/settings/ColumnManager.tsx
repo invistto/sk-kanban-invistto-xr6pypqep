@@ -4,6 +4,8 @@ import { Input } from '@/components/ui/input'
 import { GripVertical, Trash2, Plus, Loader2 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useToast } from '@/hooks/use-toast'
+import pb from '@/lib/pocketbase/client'
+import { extractFieldErrors, getErrorMessage } from '@/lib/pocketbase/errors'
 
 function ColumnRow({ col, index, onUpdate, onDelete, onDragStart, onDragOver, onDrop }: any) {
   const [name, setName] = useState(col.name)
@@ -48,7 +50,7 @@ function ColumnRow({ col, index, onUpdate, onDelete, onDragStart, onDragOver, on
 }
 
 export function ColumnManager() {
-  const { columns, updateColumn, deleteColumn, addColumn, reorderColumns } = useProject()
+  const { activeBoardId, columns, updateColumn, deleteColumn, reorderColumns } = useProject()
   const { toast } = useToast()
   const [newColName, setNewColName] = useState('')
   const [isAdding, setIsAdding] = useState(false)
@@ -62,14 +64,29 @@ export function ColumnManager() {
 
   const handleAdd = async () => {
     if (!newColName.trim()) return
+    if (!activeBoardId) {
+      toast({ title: 'Erro', description: 'Nenhum quadro selecionado.', variant: 'destructive' })
+      return
+    }
     setIsSubmitting(true)
     try {
-      await addColumn(newColName)
+      const order = columns.length > 0 ? Math.max(...columns.map((c: any) => c.order)) + 1 : 0
+      await pb.collection('columns').create({
+        board_id: activeBoardId,
+        name: newColName,
+        order,
+      })
       setNewColName('')
       setIsAdding(false)
       toast({ title: 'Coluna criada com sucesso!' })
-    } catch {
-      toast({ title: 'Erro ao criar coluna', variant: 'destructive' })
+    } catch (error) {
+      const fieldErrors = extractFieldErrors(error)
+      const errorMessage = getErrorMessage(error)
+      toast({
+        title: 'Erro ao criar coluna',
+        description: fieldErrors.name || fieldErrors.order || fieldErrors.board_id || errorMessage,
+        variant: 'destructive',
+      })
     } finally {
       setIsSubmitting(false)
     }

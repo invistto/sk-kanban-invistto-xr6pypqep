@@ -11,10 +11,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useToast } from '@/hooks/use-toast'
+import pb from '@/lib/pocketbase/client'
+import { extractFieldErrors, getErrorMessage } from '@/lib/pocketbase/errors'
 
 export default function Index() {
-  const { boards, activeBoardId, tasks, columns, moveTask, addTask, addColumn, reorderColumns } =
-    useProject()
+  const { boards, activeBoardId, tasks, columns, moveTask, addTask, reorderColumns } = useProject()
   const [addingToColumn, setAddingToColumn] = useState<string | null>(null)
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [isAddingColumn, setIsAddingColumn] = useState(false)
@@ -70,15 +71,31 @@ export default function Index() {
 
   const handleAddColumn = async () => {
     if (newColumnName.trim()) {
+      if (!activeBoardId) {
+        toast({ title: 'Erro', description: 'Nenhum quadro selecionado.', variant: 'destructive' })
+        return
+      }
       setIsSubmittingColumn(true)
       try {
-        await addColumn(newColumnName)
+        const order = columns.length > 0 ? Math.max(...columns.map((c) => c.order)) + 1 : 0
+        await pb.collection('columns').create({
+          board_id: activeBoardId,
+          name: newColumnName,
+          order,
+        })
         setNewColumnName('')
         setIsAddingColumn(false)
         toast({ title: 'Coluna criada com sucesso!' })
       } catch (error) {
+        const fieldErrors = extractFieldErrors(error)
+        const errorMessage = getErrorMessage(error)
         console.error(error)
-        toast({ title: 'Erro ao criar coluna', variant: 'destructive' })
+        toast({
+          title: 'Erro ao criar coluna',
+          description:
+            fieldErrors.name || fieldErrors.order || fieldErrors.board_id || errorMessage,
+          variant: 'destructive',
+        })
       } finally {
         setIsSubmittingColumn(false)
       }
