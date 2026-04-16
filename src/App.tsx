@@ -14,6 +14,7 @@ import { ProjectProvider } from './store/project-context'
 import { AuthProvider, useAuth } from './hooks/use-auth'
 import AuthPage from './pages/Auth'
 import { Navigate } from 'react-router-dom'
+import { TaskDetailSheet } from './components/TaskDetailSheet'
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth()
@@ -47,6 +48,7 @@ const App = () => (
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <TaskDetailSheet />
         </TooltipProvider>
       </ProjectProvider>
     </AuthProvider>

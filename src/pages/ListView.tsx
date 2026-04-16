@@ -14,6 +14,9 @@ import { ptBR } from 'date-fns/locale'
 import { priorityColors, priorityLabels } from '@/components/TaskCard'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useState, useEffect } from 'react'
+import { Button } from '@/components/ui/button'
+import { Plus } from 'lucide-react'
+import { CreateTaskDialog } from '@/components/CreateTaskDialog'
 
 export default function ListView() {
   const { tasks: contextTasks, columns, members, setSelectedTaskId } = useProject()
@@ -42,14 +45,21 @@ export default function ListView() {
     }
   })
 
+  const [isCreatingTask, setIsCreatingTask] = useState(false)
+
   const sortedTasks = [...tasks].sort(
     (a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime(),
   )
 
   return (
     <div className="p-6 h-full flex flex-col">
+      <CreateTaskDialog open={isCreatingTask} onOpenChange={setIsCreatingTask} />
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold tracking-tight">Lista de Tarefas</h1>
+        <Button onClick={() => setIsCreatingTask(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Nova Tarefa
+        </Button>
       </div>
 
       <div className="rounded-md border bg-card flex-1 overflow-auto kanban-scrollbar">

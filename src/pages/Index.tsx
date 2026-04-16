@@ -15,6 +15,7 @@ import pb from '@/lib/pocketbase/client'
 import { extractFieldErrors, getErrorMessage } from '@/lib/pocketbase/errors'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useEffect } from 'react'
+import { CreateTaskDialog } from '@/components/CreateTaskDialog'
 
 export default function Index() {
   const {
@@ -23,10 +24,8 @@ export default function Index() {
     tasks: contextTasks,
     columns,
     moveTask,
-    addTask,
     addColumn,
     reorderColumns,
-    setSelectedTaskId,
   } = useProject()
   const [tasks, setTasks] = useState(contextTasks)
 
@@ -58,11 +57,9 @@ export default function Index() {
   })
 
   const [addingToColumn, setAddingToColumn] = useState<string | null>(null)
-  const [newTaskTitle, setNewTaskTitle] = useState('')
   const [isAddingColumn, setIsAddingColumn] = useState(false)
   const [newColumnName, setNewColumnName] = useState('')
   const [isSubmittingColumn, setIsSubmittingColumn] = useState(false)
-  const [isSubmittingTask, setIsSubmittingTask] = useState(false)
   const { toast } = useToast()
 
   const activeBoard = boards.find((b) => b.id === activeBoardId)
@@ -92,37 +89,6 @@ export default function Index() {
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
-  }
-
-  const handleAddTask = async (columnId: string) => {
-    if (newTaskTitle.trim()) {
-      setIsSubmittingTask(true)
-      try {
-        const res = await addTask(columnId, newTaskTitle)
-        setNewTaskTitle('')
-        setAddingToColumn(null)
-        toast({ title: 'Tarefa adicionada com sucesso!' })
-
-        if (res && res.id) {
-          setSelectedTaskId(res.id)
-        } else {
-          try {
-            const latestTask = await pb
-              .collection('tasks')
-              .getFirstListItem(`column_id="${columnId}"`, { sort: '-created' })
-            if (latestTask && latestTask.id) {
-              setSelectedTaskId(latestTask.id)
-            }
-          } catch (err) {
-            console.error('Failed to fetch latest task:', err)
-          }
-        }
-      } catch (error) {
-        toast({ title: 'Erro ao adicionar tarefa', variant: 'destructive' })
-      } finally {
-        setIsSubmittingTask(false)
-      }
-    }
   }
 
   const handleAddColumn = async () => {
@@ -168,6 +134,11 @@ export default function Index() {
 
   return (
     <div className="h-full w-full flex flex-col">
+      <CreateTaskDialog
+        open={!!addingToColumn}
+        onOpenChange={(open) => !open && setAddingToColumn(null)}
+        defaultColumnId={addingToColumn || undefined}
+      />
       <div className="px-6 py-4 flex-shrink-0 flex items-center justify-between border-b bg-background/50">
         <h1 className="text-2xl font-bold tracking-tight">{activeBoard?.name || 'Quadro'}</h1>
         <div className="flex items-center gap-2">
@@ -218,43 +189,13 @@ export default function Index() {
                     <TaskCard key={task.id} task={task} />
                   ))}
 
-                  {addingToColumn === column.id ? (
-                    <div className="mt-2 flex flex-col gap-2 bg-card p-3 rounded-lg border shadow-sm animate-in fade-in zoom-in-95">
-                      <Input
-                        autoFocus
-                        placeholder="O que precisa ser feito?"
-                        value={newTaskTitle}
-                        onChange={(e) => setNewTaskTitle(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleAddTask(column.id)}
-                        className="text-sm h-8"
-                      />
-                      <div className="flex items-center gap-2 justify-end">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setAddingToColumn(null)}
-                          disabled={isSubmittingTask}
-                        >
-                          Cancelar
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => handleAddTask(column.id)}
-                          disabled={isSubmittingTask}
-                        >
-                          {isSubmittingTask ? 'Adicionando...' : 'Adicionar'}
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <Button
-                      variant="ghost"
-                      className="mt-2 w-full justify-start text-muted-foreground hover:bg-muted/80 hover:text-foreground"
-                      onClick={() => setAddingToColumn(column.id)}
-                    >
-                      <Plus className="mr-2 h-4 w-4" /> Adicionar Tarefa
-                    </Button>
-                  )}
+                  <Button
+                    variant="ghost"
+                    className="mt-2 w-full justify-start text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                    onClick={() => setAddingToColumn(column.id)}
+                  >
+                    <Plus className="mr-2 h-4 w-4" /> Adicionar Tarefa
+                  </Button>
                 </div>
               </div>
             )

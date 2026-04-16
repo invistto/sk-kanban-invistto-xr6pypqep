@@ -21,6 +21,8 @@ import { Badge } from '@/components/ui/badge'
 import { priorityColors } from '@/components/TaskCard'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useEffect } from 'react'
+import { Plus } from 'lucide-react'
+import { CreateTaskDialog } from '@/components/CreateTaskDialog'
 
 export default function CalendarView() {
   const { tasks: contextTasks, setSelectedTaskId } = useProject()
@@ -58,12 +60,20 @@ export default function CalendarView() {
   const dateFormat = 'MMMM yyyy'
   const days = eachDayOfInterval({ start: startDate, end: endDate })
 
+  const [isCreatingTask, setIsCreatingTask] = useState(false)
   const weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
   return (
     <div className="p-6 h-full flex flex-col bg-background">
+      <CreateTaskDialog open={isCreatingTask} onOpenChange={setIsCreatingTask} />
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold tracking-tight">Calendário</h1>
+        <div className="flex items-center gap-4">
+          <h1 className="text-2xl font-bold tracking-tight">Calendário</h1>
+          <Button size="sm" onClick={() => setIsCreatingTask(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Nova Tarefa
+          </Button>
+        </div>
         <div className="flex items-center gap-4">
           <Button
             variant="outline"
