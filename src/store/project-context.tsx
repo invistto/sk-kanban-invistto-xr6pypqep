@@ -13,6 +13,7 @@ export interface Board {
   id: string
   name: string
   owner_id: string
+  members?: string[]
 }
 export interface Column {
   id: string
@@ -61,6 +62,7 @@ interface ProjectContextType {
   activeBoardId: string | null
   setActiveBoardId: (id: string) => void
   createBoard: (name: string) => Promise<Board>
+  updateBoard: (id: string, data: Partial<Board>) => Promise<void>
 
   tasks: Task[]
   columns: Column[]
@@ -137,20 +139,21 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (activeBoardId) {
-      // Clear data to prevent stale state from previous board
       setColumns([])
       setTasksRaw([])
+      setChecklists([])
+      setComments([])
       loadBoardData(activeBoardId)
     } else {
       setColumns([])
       setTasksRaw([])
+      setChecklists([])
+      setComments([])
     }
   }, [activeBoardId, loadBoardData])
 
   const handleRealtimeUpdate = useCallback(() => {
-    if (activeBoardId) {
-      loadBoardData(activeBoardId)
-    }
+    if (activeBoardId) loadBoardData(activeBoardId)
   }, [activeBoardId, loadBoardData])
 
   useRealtime('boards', loadBoards, !!user)
@@ -158,6 +161,13 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   useRealtime('tasks', handleRealtimeUpdate, !!activeBoardId)
   useRealtime('checklists', handleRealtimeUpdate, !!activeBoardId)
   useRealtime('comments', handleRealtimeUpdate, !!activeBoardId)
+  useRealtime(
+    'users',
+    () => {
+      if (activeBoardId) loadBoardData(activeBoardId)
+    },
+    !!activeBoardId,
+  )
 
   const tasks: Task[] = tasksRaw.map((t) => ({
     ...t,
@@ -174,19 +184,31 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     const newBoard = await pb.collection('boards').create<Board>({
       name,
       owner_id: user.id,
+      members: [user.id], // Auto-add creator as member
     })
 
-    const defaultCols = ['A Fazer', 'Em Progresso', 'Concluído']
-    for (let i = 0; i < defaultCols.length; i++) {
-      await pb.collection('columns').create({
-        board_id: newBoard.id,
-        name: defaultCols[i],
-        order: i,
-      })
+    try {
+      const defaultCols = ['A Fazer', 'Em Progresso', 'Concluído']
+      await Promise.all(
+        defaultCols.map((colName, i) =>
+          pb.collection('columns').create({
+            board_id: newBoard.id,
+            name: colName,
+            order: i,
+          }),
+        ),
+      )
+    } catch (e) {
+      console.error('Failed creating default cols, skipping error toast as board exists', e)
     }
 
     setActiveBoardId(newBoard.id)
     return newBoard
+  }
+
+  const updateBoard = async (id: string, data: Partial<Board>) => {
+    await pb.collection('boards').update(id, data)
+    await loadBoards()
   }
 
   const addColumn = async (name: string) => {
@@ -207,15 +229,12 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   }
 
   const reorderColumns = async (reorderedCols: Column[]) => {
-    // Optimistic UI update
     setColumns(reorderedCols)
     try {
-      const promises = reorderedCols.map((col) =>
-        pb.collection('columns').update(col.id, { order: col.order }),
+      await Promise.all(
+        reorderedCols.map((col) => pb.collection('columns').update(col.id, { order: col.order })),
       )
-      await Promise.all(promises)
     } catch (e) {
-      // Revert if error occurs (realtime will fix it or we reload manually)
       if (activeBoardId) loadBoardData(activeBoardId)
       throw e
     }
@@ -241,10 +260,6 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     await pb.collection('tasks').update(taskId, payload)
   }
 
-  const updateSubtask = async (subtaskId: string, completed: boolean) => {
-    await pb.collection('checklists').update(subtaskId, { completed })
-  }
-
   const addTask = async (columnId: string, title: string) => {
     if (!activeBoardId) return
     await pb.collection('tasks').create({
@@ -256,6 +271,10 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       order: tasksRaw.filter((t) => t.column_id === columnId).length,
       tags: [],
     })
+  }
+
+  const updateSubtask = async (subtaskId: string, completed: boolean) => {
+    await pb.collection('checklists').update(subtaskId, { completed })
   }
 
   const addComment = async (taskId: string, content: string) => {
@@ -274,6 +293,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         activeBoardId,
         setActiveBoardId,
         createBoard,
+        updateBoard,
         tasks,
         columns,
         members,

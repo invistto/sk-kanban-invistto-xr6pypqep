@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { AlertCircle, CheckCircle2, Clock, ListTodo } from 'lucide-react'
 
 export default function Dashboard() {
-  const { tasks, columns, members, setSelectedTaskId } = useProject()
+  const { tasks, columns, members, setSelectedTaskId, boards, activeBoardId } = useProject()
 
   const totalTasks = tasks.length
   const completedTasks = tasks.filter((t) => t.columnId === 'col4').length
@@ -27,8 +27,14 @@ export default function Dashboard() {
     }))
     .filter((d) => d.value > 0)
 
-  const memberLoadData = members.map((m) => ({
-    name: m.name.split(' ')[0],
+  const activeBoard = boards.find((b) => b.id === activeBoardId)
+  const boardMemberIds = activeBoard?.members || []
+  const boardUsers = members.filter(
+    (m) => boardMemberIds.includes(m.id) || m.id === activeBoard?.owner_id,
+  )
+
+  const memberLoadData = boardUsers.map((m) => ({
+    name: (m.name || m.email).split(' ')[0],
     tarefas: tasks.filter((t) => t.assigneeId === m.id && t.columnId !== 'col4').length,
   }))
 
