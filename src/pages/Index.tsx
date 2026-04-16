@@ -13,10 +13,50 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import pb from '@/lib/pocketbase/client'
 import { extractFieldErrors, getErrorMessage } from '@/lib/pocketbase/errors'
+import { useRealtime } from '@/hooks/use-realtime'
+import { useEffect } from 'react'
 
 export default function Index() {
-  const { boards, activeBoardId, tasks, columns, moveTask, addTask, addColumn, reorderColumns } =
-    useProject()
+  const {
+    boards,
+    activeBoardId,
+    tasks: contextTasks,
+    columns,
+    moveTask,
+    addTask,
+    addColumn,
+    reorderColumns,
+    setSelectedTaskId,
+  } = useProject()
+  const [tasks, setTasks] = useState(contextTasks)
+
+  useEffect(() => {
+    setTasks(contextTasks)
+  }, [contextTasks])
+
+  useRealtime('tasks', (e) => {
+    const mapRecordToTask = (rec: any) => ({
+      ...rec,
+      columnId: rec.column_id || rec.columnId,
+      deadline: rec.due_date || rec.deadline,
+      assigneeId: rec.responsible_id || rec.assigneeId,
+      subtasks: rec.subtasks || [],
+    })
+
+    if (e.action === 'create') {
+      setTasks((prev) => {
+        if (prev.find((t) => t.id === e.record.id)) return prev
+        return [...prev, mapRecordToTask(e.record) as any]
+      })
+    } else if (e.action === 'update') {
+      setTasks((prev) =>
+        prev.map((m) => (m.id === e.record.id ? { ...m, ...mapRecordToTask(e.record) } : m)),
+      )
+    } else if (e.action === 'delete') {
+      setTasks((prev) => prev.filter((m) => m.id !== e.record.id))
+    }
+  })
+
   const [addingToColumn, setAddingToColumn] = useState<string | null>(null)
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [isAddingColumn, setIsAddingColumn] = useState(false)
@@ -58,10 +98,23 @@ export default function Index() {
     if (newTaskTitle.trim()) {
       setIsSubmittingTask(true)
       try {
-        await addTask(columnId, newTaskTitle)
+        const res = await addTask(columnId, newTaskTitle)
         setNewTaskTitle('')
         setAddingToColumn(null)
         toast({ title: 'Tarefa adicionada com sucesso!' })
+
+        if (res && res.id) {
+          setSelectedTaskId(res.id)
+        } else {
+          try {
+            const latestTask = await pb
+              .collection('tasks')
+              .getFirstListItem(`column_id="${columnId}"`, { sort: '-created' })
+            if (latestTask && latestTask.id) {
+              setSelectedTaskId(latestTask.id)
+            }
+          } catch (_) {}
+        }
       } catch (error) {
         toast({ title: 'Erro ao adicionar tarefa', variant: 'destructive' })
       } finally {

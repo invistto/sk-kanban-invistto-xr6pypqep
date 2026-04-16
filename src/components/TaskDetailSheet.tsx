@@ -69,9 +69,11 @@ export function TaskDetailSheet() {
     priority: 'baixa',
     deadline: new Date().toISOString(),
     tags: [] as string[],
+    responsible_id: 'none',
   })
   const [tagInput, setTagInput] = useState('')
   const [files, setFiles] = useState<File[]>([])
+  const [filesToRemove, setFilesToRemove] = useState<string[]>([])
 
   useEffect(() => {
     if (task) {
@@ -79,10 +81,12 @@ export function TaskDetailSheet() {
         title: task.title || '',
         description: task.description || '',
         priority: task.priority || 'baixa',
-        deadline: task.deadline || new Date().toISOString(),
+        deadline: task.deadline || task.due_date || new Date().toISOString(),
         tags: task.tags || [],
+        responsible_id: task.responsible_id || task.assigneeId || 'none',
       })
       setFiles([])
+      setFilesToRemove([])
       setErrors({})
     } else {
       setIsEditing(false)
@@ -125,17 +129,29 @@ export function TaskDetailSheet() {
     setIsSaving(true)
     setErrors({})
     try {
+      if (!formData.title.trim()) {
+        setErrors({ title: 'O título não pode estar vazio.' })
+        setIsSaving(false)
+        return
+      }
+
       const pbData = new FormData()
       pbData.append('title', formData.title)
       pbData.append('description', formData.description)
       pbData.append('priority', formData.priority)
       pbData.append('due_date', formData.deadline)
       pbData.append('tags', JSON.stringify(formData.tags))
+      if (formData.responsible_id && formData.responsible_id !== 'none') {
+        pbData.append('responsible_id', formData.responsible_id)
+      } else {
+        pbData.append('responsible_id', '')
+      }
 
       pbData.append('board_id', (task as any).board_id || task.boardId || '')
       pbData.append('column_id', (task as any).column_id || task.columnId || '')
 
       files.forEach((f) => pbData.append('files', f))
+      filesToRemove.forEach((f) => pbData.append('files-', f))
 
       let pbRecord
       try {
@@ -153,12 +169,16 @@ export function TaskDetailSheet() {
         description: formData.description,
         priority: formData.priority as any,
         deadline: formData.deadline,
+        due_date: formData.deadline,
         tags: formData.tags,
+        assigneeId: formData.responsible_id !== 'none' ? formData.responsible_id : undefined,
+        responsible_id: formData.responsible_id !== 'none' ? formData.responsible_id : undefined,
         ...(pbRecord?.files ? { files: pbRecord.files } : {}),
       })
 
       setIsEditing(false)
       setFiles([])
+      setFilesToRemove([])
     } catch (error) {
       console.error(error)
       setErrors(extractFieldErrors(error))
@@ -201,19 +221,37 @@ export function TaskDetailSheet() {
                     </div>
                     <div className="col-span-3">
                       <Select
-                        value={task.assigneeId || 'none'}
-                        onValueChange={(val) => updateTask(task.id, { assigneeId: val })}
+                        value={task.responsible_id || task.assigneeId || 'none'}
+                        onValueChange={async (val) => {
+                          const responsible = val === 'none' ? null : val
+                          try {
+                            await pb
+                              .collection('tasks')
+                              .update(task.id, { responsible_id: responsible })
+                            updateTask(task.id, {
+                              assigneeId: responsible,
+                              responsible_id: responsible,
+                            })
+                          } catch (e) {
+                            console.error(e)
+                          }
+                        }}
                       >
                         <SelectTrigger className="w-full h-8 bg-transparent border-transparent hover:bg-muted/50 px-2 -ml-2">
                           <SelectValue placeholder="Sem responsável" />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="none">Sem responsável</SelectItem>
                           {members.map((m) => (
                             <SelectItem key={m.id} value={m.id}>
                               <div className="flex items-center gap-2">
                                 <Avatar className="h-5 w-5">
-                                  <AvatarImage src={m.avatar} />
-                                  <AvatarFallback>US</AvatarFallback>
+                                  <AvatarImage
+                                    src={m.avatar ? pb.files.getURL(m, m.avatar) : undefined}
+                                  />
+                                  <AvatarFallback>
+                                    {m.name?.substring(0, 2).toUpperCase() || 'US'}
+                                  </AvatarFallback>
                                 </Avatar>
                                 {m.name}
                               </div>
@@ -229,7 +267,11 @@ export function TaskDetailSheet() {
                       <CalendarIcon className="h-4 w-4" /> Prazo
                     </div>
                     <div className="col-span-3 text-sm px-2 -ml-2 font-medium">
-                      {format(new Date(task.deadline), "dd 'de' MMMM, yyyy", { locale: ptBR })}
+                      {task.deadline || task.due_date
+                        ? format(new Date(task.deadline || task.due_date), "dd 'de' MMMM, yyyy", {
+                            locale: ptBR,
+                          })
+                        : 'Sem prazo'}
                     </div>
                   </div>
 
@@ -348,7 +390,7 @@ export function TaskDetailSheet() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <label className="text-sm font-medium mb-1.5 block">Prioridade</label>
                       <Select
@@ -363,6 +405,36 @@ export function TaskDetailSheet() {
                           <SelectItem value="media">Média</SelectItem>
                           <SelectItem value="alta">Alta</SelectItem>
                           <SelectItem value="urgente">Urgente</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-medium mb-1.5 block">Responsável</label>
+                      <Select
+                        value={formData.responsible_id}
+                        onValueChange={(v) => setFormData({ ...formData, responsible_id: v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sem responsável" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Sem responsável</SelectItem>
+                          {members.map((m) => (
+                            <SelectItem key={m.id} value={m.id}>
+                              <div className="flex items-center gap-2">
+                                <Avatar className="h-5 w-5">
+                                  <AvatarImage
+                                    src={m.avatar ? pb.files.getURL(m, m.avatar) : undefined}
+                                  />
+                                  <AvatarFallback>
+                                    {m.name?.substring(0, 2).toUpperCase() || 'US'}
+                                  </AvatarFallback>
+                                </Avatar>
+                                {m.name}
+                              </div>
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -450,29 +522,42 @@ export function TaskDetailSheet() {
                       />
                     </div>
 
-                    {(files.length > 0 || (task as any).files?.length > 0) && (
+                    {(files.length > 0 ||
+                      ((task as any).files &&
+                        (task as any).files.length > 0 &&
+                        (task as any).files.filter((f: string) => !filesToRemove.includes(f))
+                          .length > 0)) && (
                       <div className="flex flex-wrap gap-3 mt-4">
                         {/* Existing files */}
-                        {(task as any).files?.map((filename: string, i: number) => {
-                          const fileUrl = (task as any).collectionId
-                            ? pb.files.getURL(task as any, filename)
-                            : `https://img.usecurling.com/p/100/100?q=doc&seed=${i}`
-                          return (
-                            <div
-                              key={`existing-${i}`}
-                              className="relative group rounded-md border overflow-hidden shadow-sm"
-                            >
-                              <img
-                                src={fileUrl}
-                                className="w-16 h-16 object-cover"
-                                alt="Anexo existente"
-                              />
-                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                <span className="text-[10px] text-white">Salvo</span>
+                        {(task as any).files
+                          ?.filter((f: string) => !filesToRemove.includes(f))
+                          .map((filename: string, i: number) => {
+                            const fileUrl = (task as any).collectionId
+                              ? pb.files.getURL(task as any, filename)
+                              : `https://img.usecurling.com/p/100/100?q=doc&seed=${i}`
+                            return (
+                              <div
+                                key={`existing-${i}`}
+                                className="relative group rounded-md border overflow-hidden shadow-sm"
+                              >
+                                <img
+                                  src={fileUrl}
+                                  className="w-16 h-16 object-cover"
+                                  alt="Anexo existente"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setFilesToRemove((prev) => [...prev, filename])}
+                                  className="absolute top-1 right-1 bg-background/80 text-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive hover:text-destructive-foreground z-10"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none flex items-center justify-center">
+                                  <span className="text-[10px] text-white">Salvo</span>
+                                </div>
                               </div>
-                            </div>
-                          )
-                        })}
+                            )
+                          })}
                         {/* New files pending upload */}
                         {files.map((f, i) => (
                           <div

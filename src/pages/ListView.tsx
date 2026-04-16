@@ -12,9 +12,35 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { format, isPast, isToday } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { priorityColors, priorityLabels } from '@/components/TaskCard'
+import { useRealtime } from '@/hooks/use-realtime'
+import { useState, useEffect } from 'react'
 
 export default function ListView() {
-  const { tasks, columns, members, setSelectedTaskId } = useProject()
+  const { tasks: contextTasks, columns, members, setSelectedTaskId } = useProject()
+  const [tasks, setTasks] = useState(contextTasks)
+
+  useEffect(() => setTasks(contextTasks), [contextTasks])
+
+  useRealtime('tasks', (e) => {
+    const mapRecord = (rec: any) => ({
+      ...rec,
+      columnId: rec.column_id || rec.columnId,
+      deadline: rec.due_date || rec.deadline,
+      assigneeId: rec.responsible_id || rec.assigneeId,
+      subtasks: rec.subtasks || [],
+    })
+    if (e.action === 'create') {
+      setTasks((prev) =>
+        prev.find((t) => t.id === e.record.id) ? prev : [...prev, mapRecord(e.record) as any],
+      )
+    } else if (e.action === 'update') {
+      setTasks((prev) =>
+        prev.map((m) => (m.id === e.record.id ? { ...m, ...mapRecord(e.record) } : m)),
+      )
+    } else if (e.action === 'delete') {
+      setTasks((prev) => prev.filter((m) => m.id !== e.record.id))
+    }
+  })
 
   const sortedTasks = [...tasks].sort(
     (a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime(),

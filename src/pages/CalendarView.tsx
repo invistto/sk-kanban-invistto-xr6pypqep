@@ -19,10 +19,36 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { priorityColors } from '@/components/TaskCard'
+import { useRealtime } from '@/hooks/use-realtime'
+import { useEffect } from 'react'
 
 export default function CalendarView() {
-  const { tasks, setSelectedTaskId } = useProject()
+  const { tasks: contextTasks, setSelectedTaskId } = useProject()
+  const [tasks, setTasks] = useState(contextTasks)
   const [currentDate, setCurrentDate] = useState(new Date())
+
+  useEffect(() => setTasks(contextTasks), [contextTasks])
+
+  useRealtime('tasks', (e) => {
+    const mapRecord = (rec: any) => ({
+      ...rec,
+      columnId: rec.column_id || rec.columnId,
+      deadline: rec.due_date || rec.deadline,
+      assigneeId: rec.responsible_id || rec.assigneeId,
+      subtasks: rec.subtasks || [],
+    })
+    if (e.action === 'create') {
+      setTasks((prev) =>
+        prev.find((t) => t.id === e.record.id) ? prev : [...prev, mapRecord(e.record) as any],
+      )
+    } else if (e.action === 'update') {
+      setTasks((prev) =>
+        prev.map((m) => (m.id === e.record.id ? { ...m, ...mapRecord(e.record) } : m)),
+      )
+    } else if (e.action === 'delete') {
+      setTasks((prev) => prev.filter((m) => m.id !== e.record.id))
+    }
+  })
 
   const monthStart = startOfMonth(currentDate)
   const monthEnd = endOfMonth(monthStart)
