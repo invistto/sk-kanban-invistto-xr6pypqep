@@ -7,12 +7,12 @@ export default function TimelineView() {
 
   // Sort tasks by creation date
   const sortedTasks = [...tasks].sort(
-    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    (a, b) => new Date(a.created).getTime() - new Date(b.created).getTime(),
   )
 
   if (sortedTasks.length === 0) return <div className="p-6">Nenhuma tarefa encontrada.</div>
 
-  const minDate = new Date(sortedTasks[0].createdAt)
+  const minDate = new Date(sortedTasks[0].created)
   const maxDateRaw = new Date(Math.max(...sortedTasks.map((t) => new Date(t.deadline).getTime())))
   const maxDate = addDays(maxDateRaw, 5) // Add buffer
 
@@ -43,10 +43,10 @@ export default function TimelineView() {
           {/* Tasks */}
           <div className="space-y-4">
             {sortedTasks.map((task) => {
-              const startDiff = Math.max(0, differenceInDays(new Date(task.createdAt), minDate))
+              const startDiff = Math.max(0, differenceInDays(new Date(task.created), minDate))
               const duration = Math.max(
                 1,
-                differenceInDays(new Date(task.deadline), new Date(task.createdAt)),
+                differenceInDays(new Date(task.deadline), new Date(task.created)),
               )
               const col = columns.find((c) => c.id === task.columnId)
 

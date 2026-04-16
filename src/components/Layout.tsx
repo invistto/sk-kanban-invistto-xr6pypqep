@@ -36,11 +36,37 @@ import { Button } from '@/components/ui/button'
 import { TaskDetailSheet } from './TaskDetailSheet'
 import { useProject } from '@/store/project-context'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Badge } from '@/components/ui/badge'
+import { useAuth } from '@/hooks/use-auth'
+import { useState, useEffect } from 'react'
+import pb from '@/lib/pocketbase/client'
+import { useRealtime } from '@/hooks/use-realtime'
+import { format } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 
 export default function Layout() {
   const location = useLocation()
-  const { members } = useProject()
-  const currentUser = members[0] // Mock current user
+  const { user, signOut } = useAuth()
+  const [notifications, setNotifications] = useState<any[]>([])
+
+  const loadNotifs = async () => {
+    if (!user) return
+    const res = await pb
+      .collection('notifications')
+      .getFullList({ filter: `user_id="${user.id}"`, sort: '-created' })
+    setNotifications(res)
+  }
+
+  useEffect(() => {
+    loadNotifs()
+  }, [user])
+  useRealtime('notifications', loadNotifs, !!user)
+
+  const unreadCount = notifications.filter((n) => !n.read).length
+
+  const markAsRead = async (id: string) => {
+    await pb.collection('notifications').update(id, { read: true })
+  }
 
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
@@ -103,13 +129,41 @@ export default function Layout() {
                 <PopoverTrigger asChild>
                   <Button variant="ghost" size="icon" className="relative h-9 w-9 rounded-full">
                     <Bell className="h-4 w-4 text-muted-foreground" />
-                    <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500 border border-background"></span>
+                    {unreadCount > 0 && (
+                      <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500 border border-background"></span>
+                    )}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent align="end" className="w-80 p-0">
-                  <div className="p-3 border-b font-medium text-sm">Notificações</div>
-                  <div className="p-4 text-center text-sm text-muted-foreground">
-                    Você não tem novas notificações.
+                  <div className="p-3 border-b font-medium text-sm flex justify-between items-center">
+                    Notificações
+                    {unreadCount > 0 && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        {unreadCount} não lidas
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="max-h-[300px] overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <div className="p-4 text-center text-sm text-muted-foreground">
+                        Você não tem novas notificações.
+                      </div>
+                    ) : (
+                      notifications.map((n) => (
+                        <div
+                          key={n.id}
+                          onClick={() => markAsRead(n.id)}
+                          className={`p-3 border-b text-sm cursor-pointer hover:bg-muted/50 ${!n.read ? 'bg-primary/5' : ''}`}
+                        >
+                          <p className={!n.read ? 'font-medium' : 'text-muted-foreground'}>
+                            {n.message}
+                          </p>
+                          <span className="text-[10px] text-muted-foreground">
+                            {format(new Date(n.created), "dd MMM 'às' HH:mm", { locale: ptBR })}
+                          </span>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </PopoverContent>
               </Popover>
@@ -118,18 +172,25 @@ export default function Layout() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                     <Avatar className="h-9 w-9">
-                      <AvatarImage src={currentUser.avatar} alt={currentUser.name} />
-                      <AvatarFallback>US</AvatarFallback>
+                      <AvatarImage
+                        src={
+                          user?.avatar
+                            ? pb.files.getURL(user, user.avatar)
+                            : `https://api.dicebear.com/7.x/initials/svg?seed=${user?.name || user?.email}`
+                        }
+                        alt={user?.name}
+                      />
+                      <AvatarFallback>
+                        {user?.name?.substring(0, 2).toUpperCase() || 'US'}
+                      </AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">{currentUser.name}</p>
-                      <p className="text-xs leading-none text-muted-foreground">
-                        {currentUser.role === 'admin' ? 'Administrador' : 'Membro'}
-                      </p>
+                      <p className="text-sm font-medium leading-none">{user?.name || 'Usuário'}</p>
+                      <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
@@ -138,7 +199,10 @@ export default function Layout() {
                     <span>Configurações da Conta</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-red-600 focus:bg-red-50 focus:text-red-600 dark:focus:bg-red-950">
+                  <DropdownMenuItem
+                    onClick={signOut}
+                    className="text-red-600 focus:bg-red-50 focus:text-red-600 dark:focus:bg-red-950 cursor-pointer"
+                  >
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Sair</span>
                   </DropdownMenuItem>

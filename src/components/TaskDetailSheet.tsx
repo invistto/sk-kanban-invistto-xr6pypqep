@@ -7,6 +7,8 @@ import { priorityColors, priorityLabels } from './TaskCard'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { useAuth } from '@/hooks/use-auth'
+import { useState } from 'react'
 import {
   Select,
   SelectContent,
@@ -18,18 +20,32 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Separator } from '@/components/ui/separator'
 
 export function TaskDetailSheet() {
-  const { tasks, columns, members, selectedTaskId, setSelectedTaskId, updateTask } = useProject()
+  const {
+    tasks,
+    columns,
+    members,
+    selectedTaskId,
+    setSelectedTaskId,
+    updateTask,
+    updateSubtask,
+    addComment,
+  } = useProject()
+  const { user } = useAuth()
+  const [newComment, setNewComment] = useState('')
 
   const task = tasks.find((t) => t.id === selectedTaskId)
   const column = columns.find((c) => c.id === task?.columnId)
 
   if (!task) return null
 
-  const toggleSubtask = (subtaskId: string) => {
-    const updatedSubtasks = task.subtasks.map((s) =>
-      s.id === subtaskId ? { ...s, completed: !s.completed } : s,
-    )
-    updateTask(task.id, { subtasks: updatedSubtasks })
+  const toggleSubtask = (subtaskId: string, current: boolean) => {
+    updateSubtask(subtaskId, !current)
+  }
+
+  const handleAddComment = () => {
+    if (!newComment.trim()) return
+    addComment(task.id, newComment)
+    setNewComment('')
   }
 
   return (
@@ -114,7 +130,7 @@ export function TaskDetailSheet() {
                       <Checkbox
                         id={sub.id}
                         checked={sub.completed}
-                        onCheckedChange={() => toggleSubtask(sub.id)}
+                        onCheckedChange={() => toggleSubtask(sub.id, sub.completed)}
                       />
                       <label
                         htmlFor={sub.id}
@@ -144,22 +160,23 @@ export function TaskDetailSheet() {
               </p>
             ) : (
               task.comments.map((comment) => {
-                const author = members.find((m) => m.id === comment.authorId)
+                const author = members.find((m) => m.id === comment.user_id)
                 return (
                   <div key={comment.id} className="flex gap-3">
                     <Avatar className="h-8 w-8 mt-0.5">
-                      <AvatarImage src={author?.avatar} />
-                      <AvatarFallback>US</AvatarFallback>
+                      <AvatarFallback>
+                        {author?.name?.substring(0, 2).toUpperCase() || 'US'}
+                      </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 bg-background border rounded-lg p-3 shadow-sm">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium">{author?.name}</span>
+                        <span className="text-sm font-medium">{author?.name || 'Usuário'}</span>
                         <span className="text-xs text-muted-foreground flex items-center gap-1">
                           <Clock className="h-3 w-3" />
-                          {format(new Date(comment.createdAt), 'dd MMM HH:mm', { locale: ptBR })}
+                          {format(new Date(comment.created), 'dd MMM HH:mm', { locale: ptBR })}
                         </span>
                       </div>
-                      <p className="text-sm text-foreground">{comment.text}</p>
+                      <p className="text-sm text-foreground">{comment.content}</p>
                     </div>
                   </div>
                 )
@@ -169,16 +186,19 @@ export function TaskDetailSheet() {
 
           <div className="flex gap-3">
             <Avatar className="h-8 w-8 mt-0.5">
-              <AvatarImage src={members[0].avatar} />
-              <AvatarFallback>ME</AvatarFallback>
+              <AvatarFallback>{user?.name?.substring(0, 2).toUpperCase() || 'ME'}</AvatarFallback>
             </Avatar>
             <div className="flex-1 flex flex-col gap-2">
               <textarea
                 className="w-full min-h-[80px] text-sm rounded-md border bg-background px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
-                placeholder="Adicione um comentário..."
+                placeholder="Adicione um comentário... (Use @ para mencionar)"
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
               />
               <div className="flex justify-end">
-                <Button size="sm">Comentar</Button>
+                <Button size="sm" onClick={handleAddComment}>
+                  Comentar
+                </Button>
               </div>
             </div>
           </div>

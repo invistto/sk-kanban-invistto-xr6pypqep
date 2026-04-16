@@ -1,4 +1,4 @@
-import { Task } from '@/lib/mock-data'
+import { Task } from '@/store/project-context'
 import { useProject } from '@/store/project-context'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -88,9 +88,8 @@ export function TaskCard({ task }: TaskCardProps) {
 
         {assignee && (
           <Avatar className="h-6 w-6 border border-background shadow-sm">
-            <AvatarImage src={assignee.avatar} alt={assignee.name} />
             <AvatarFallback className="text-[10px]">
-              {assignee.name.substring(0, 2).toUpperCase()}
+              {assignee.name?.substring(0, 2).toUpperCase() || 'US'}
             </AvatarFallback>
           </Avatar>
         )}
