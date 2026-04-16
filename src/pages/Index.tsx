@@ -12,9 +12,11 @@ import {
 } from '@/components/ui/dropdown-menu'
 
 export default function Index() {
-  const { tasks, columns, moveTask, addTask } = useProject()
+  const { tasks, columns, moveTask, addTask, addColumn } = useProject()
   const [addingToColumn, setAddingToColumn] = useState<string | null>(null)
   const [newTaskTitle, setNewTaskTitle] = useState('')
+  const [isAddingColumn, setIsAddingColumn] = useState(false)
+  const [newColumnName, setNewColumnName] = useState('')
 
   const handleDrop = (e: React.DragEvent, columnId: string) => {
     e.preventDefault()
@@ -33,6 +35,14 @@ export default function Index() {
       addTask(columnId, newTaskTitle)
       setNewTaskTitle('')
       setAddingToColumn(null)
+    }
+  }
+
+  const handleAddColumn = async () => {
+    if (newColumnName.trim()) {
+      await addColumn(newColumnName)
+      setNewColumnName('')
+      setIsAddingColumn(false)
     }
   }
 
@@ -62,7 +72,7 @@ export default function Index() {
               >
                 <div className="flex items-center justify-between p-3 px-4">
                   <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-sm">{column.title}</h3>
+                    <h3 className="font-semibold text-sm">{column.name}</h3>
                     <span className="flex h-5 items-center justify-center rounded-full bg-muted-foreground/20 px-2 text-xs font-medium text-muted-foreground">
                       {columnTasks.length}
                     </span>
@@ -120,14 +130,36 @@ export default function Index() {
             )
           })}
 
-          <div className="w-[320px] shrink-0 pt-0">
-            <Button
-              variant="outline"
-              className="w-full justify-start h-12 bg-muted/10 border-dashed hover:bg-muted/30"
-            >
-              <Plus className="mr-2 h-4 w-4" /> Adicionar Coluna
-            </Button>
-          </div>
+          {isAddingColumn ? (
+            <div className="w-[320px] shrink-0 p-3 bg-muted/40 rounded-xl flex flex-col gap-2">
+              <Input
+                autoFocus
+                value={newColumnName}
+                onChange={(e) => setNewColumnName(e.target.value)}
+                placeholder="Nome da coluna"
+                onKeyDown={(e) => e.key === 'Enter' && handleAddColumn()}
+                className="bg-card text-sm h-9"
+              />
+              <div className="flex gap-2 justify-end">
+                <Button variant="ghost" size="sm" onClick={() => setIsAddingColumn(false)}>
+                  Cancelar
+                </Button>
+                <Button size="sm" onClick={handleAddColumn}>
+                  Adicionar
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="w-[320px] shrink-0 pt-0">
+              <Button
+                variant="outline"
+                className="w-full justify-start h-12 bg-muted/10 border-dashed hover:bg-muted/30"
+                onClick={() => setIsAddingColumn(true)}
+              >
+                <Plus className="mr-2 h-4 w-4" /> Adicionar Coluna
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </div>

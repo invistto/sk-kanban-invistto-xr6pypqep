@@ -43,6 +43,15 @@ import pb from '@/lib/pocketbase/client'
 import { useRealtime } from '@/hooks/use-realtime'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { ChevronsUpDown, PlusCircle, Check } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 export default function Layout() {
   const location = useLocation()
@@ -68,6 +77,18 @@ export default function Layout() {
     await pb.collection('notifications').update(id, { read: true })
   }
 
+  const { boards, activeBoardId, setActiveBoardId, createBoard } = useProject()
+  const [isCreateBoardOpen, setIsCreateBoardOpen] = useState(false)
+  const [newBoardName, setNewBoardName] = useState('')
+
+  const handleCreateBoard = async () => {
+    if (newBoardName.trim()) {
+      await createBoard(newBoardName)
+      setNewBoardName('')
+      setIsCreateBoardOpen(false)
+    }
+  }
+
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { name: 'Quadro', path: '/', icon: KanbanSquare },
@@ -82,10 +103,45 @@ export default function Layout() {
       <div className="flex h-screen overflow-hidden bg-background w-full">
         <Sidebar className="border-r border-border/50">
           <SidebarTop className="p-4 flex items-center gap-2 mt-2">
-            <div className="bg-primary text-primary-foreground p-1.5 rounded-md">
-              <KanbanSquare className="h-5 w-5" />
-            </div>
-            <span className="font-bold text-lg tracking-tight">K-Board</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-between px-2 flex items-center gap-2 hover:bg-muted/50 h-auto py-1.5"
+                >
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <div className="bg-primary text-primary-foreground p-1.5 rounded-md shrink-0">
+                      <KanbanSquare className="h-5 w-5" />
+                    </div>
+                    <span className="font-bold text-lg tracking-tight truncate">
+                      {boards.find((b) => b.id === activeBoardId)?.name || 'K-Board'}
+                    </span>
+                  </div>
+                  <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-64" align="start">
+                <DropdownMenuLabel>Meus Quadros</DropdownMenuLabel>
+                {boards.map((b) => (
+                  <DropdownMenuItem
+                    key={b.id}
+                    onClick={() => setActiveBoardId(b.id)}
+                    className="flex items-center justify-between cursor-pointer"
+                  >
+                    <span className="truncate">{b.name}</span>
+                    {b.id === activeBoardId && <Check className="h-4 w-4 shrink-0" />}
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onSelect={() => setIsCreateBoardOpen(true)}
+                  className="cursor-pointer"
+                >
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  <span>Criar Novo Quadro</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </SidebarTop>
           <SidebarContent>
             <SidebarGroup>
@@ -217,6 +273,29 @@ export default function Layout() {
         </SidebarInset>
       </div>
       <TaskDetailSheet />
+
+      <Dialog open={isCreateBoardOpen} onOpenChange={setIsCreateBoardOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Novo Quadro</DialogTitle>
+            <DialogDescription>Dê um nome ao seu novo quadro Kanban.</DialogDescription>
+          </DialogHeader>
+          <Input
+            value={newBoardName}
+            onChange={(e) => setNewBoardName(e.target.value)}
+            placeholder="Ex: Projeto X"
+            onKeyDown={(e) => e.key === 'Enter' && handleCreateBoard()}
+          />
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsCreateBoardOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleCreateBoard} disabled={!newBoardName.trim()}>
+              Criar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </SidebarProvider>
   )
 }
