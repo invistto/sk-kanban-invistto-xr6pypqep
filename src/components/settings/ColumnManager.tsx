@@ -65,17 +65,34 @@ export function ColumnManager() {
   const handleAdd = async () => {
     if (!newColName.trim()) return
     if (!activeBoardId) {
-      toast({ title: 'Erro', description: 'Nenhum quadro selecionado.', variant: 'destructive' })
+      toast({
+        title: 'Erro de Validação',
+        description: 'O ID do quadro não pode estar vazio. Nenhum quadro selecionado.',
+        variant: 'destructive',
+      })
       return
     }
     setIsSubmitting(true)
     try {
-      const order = columns.length > 0 ? Math.max(...columns.map((c: any) => c.order)) + 1 : 0
+      const currentOrders = localColumns.map((c) => (typeof c.order === 'number' ? c.order : 0))
+      const order = currentOrders.length > 0 ? Math.max(...currentOrders) + 1 : 0
+
+      if (typeof order !== 'number' || isNaN(order)) {
+        toast({
+          title: 'Erro de Cálculo',
+          description: 'Falha ao determinar a ordem da coluna.',
+          variant: 'destructive',
+        })
+        setIsSubmitting(false)
+        return
+      }
+
       await pb.collection('columns').create({
         board_id: activeBoardId,
-        name: newColName,
+        name: newColName.trim(),
         order,
       })
+
       setNewColName('')
       setIsAdding(false)
       toast({ title: 'Coluna criada com sucesso!' })

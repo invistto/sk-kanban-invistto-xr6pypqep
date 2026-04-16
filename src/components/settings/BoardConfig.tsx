@@ -3,11 +3,18 @@ import { Input } from '@/components/ui/input'
 import { useState, useEffect } from 'react'
 import { useToast } from '@/hooks/use-toast'
 import { Loader2 } from 'lucide-react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { ColumnManager } from './ColumnManager'
 import { BoardMembers } from './BoardMembers'
 
 export function BoardConfig() {
-  const { activeBoardId, boards, updateBoard } = useProject()
+  const { activeBoardId, setActiveBoardId, boards, updateBoard } = useProject()
   const { toast } = useToast()
   const activeBoard = boards.find((b) => b.id === activeBoardId)
 
@@ -40,8 +47,26 @@ export function BoardConfig() {
   }
 
   return (
-    <div className="animate-fade-in pb-10">
+    <div className="animate-fade-in pb-10 space-y-6">
       <section className="bg-card p-6 border rounded-xl shadow-sm">
+        <div className="mb-6 border-b pb-6">
+          <label className="text-sm font-medium mb-2 block text-muted-foreground">
+            Quadro Selecionado
+          </label>
+          <Select value={activeBoardId || ''} onValueChange={setActiveBoardId}>
+            <SelectTrigger className="w-full max-w-md bg-background">
+              <SelectValue placeholder="Selecione um quadro..." />
+            </SelectTrigger>
+            <SelectContent>
+              {boards.map((b) => (
+                <SelectItem key={b.id} value={b.id}>
+                  {b.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
         <h2 className="text-lg font-medium mb-4">Nome do Quadro</h2>
         <div className="flex items-center gap-3">
           <Input

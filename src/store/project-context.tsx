@@ -86,7 +86,14 @@ const ProjectContext = createContext<ProjectContextType | undefined>(undefined)
 export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
   const [boards, setBoards] = useState<Board[]>([])
-  const [activeBoardId, setActiveBoardId] = useState<string | null>(null)
+  const [activeBoardId, setActiveBoardIdState] = useState<string | null>(() => {
+    return localStorage.getItem('kanban_active_board') || null
+  })
+
+  const setActiveBoardId = (id: string) => {
+    setActiveBoardIdState(id)
+    localStorage.setItem('kanban_active_board', id)
+  }
 
   const [columns, setColumns] = useState<Column[]>([])
   const [tasksRaw, setTasksRaw] = useState<TaskRecord[]>([])
@@ -100,8 +107,13 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     try {
       const fetchedBoards = await pb.collection('boards').getFullList<Board>({ sort: 'created' })
       setBoards(fetchedBoards)
-      if (fetchedBoards.length > 0 && !activeBoardId) {
-        setActiveBoardId(fetchedBoards[0].id)
+      if (fetchedBoards.length > 0) {
+        const savedId = localStorage.getItem('kanban_active_board')
+        if (savedId && fetchedBoards.some((b) => b.id === savedId)) {
+          if (!activeBoardId) setActiveBoardIdState(savedId)
+        } else if (!activeBoardId) {
+          setActiveBoardId(fetchedBoards[0].id)
+        }
       }
     } catch (e) {
       console.error(e)
