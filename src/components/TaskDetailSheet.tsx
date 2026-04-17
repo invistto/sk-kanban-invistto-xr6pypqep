@@ -119,12 +119,26 @@ export function TaskDetailSheet() {
 
       e.preventDefault()
 
+      const MAX_FILE_SIZE = 5 * 1024 * 1024
+      const invalidFiles = pastedFiles.filter((f) => f.size > MAX_FILE_SIZE)
+      if (invalidFiles.length > 0) {
+        toast.error(`Arquivo(s) excede(m) o limite de 5MB.`)
+        return
+      }
+
       if (isEditing) {
         setFiles((prev) => [...prev, ...pastedFiles])
+        toast.success(`${pastedFiles.length} arquivo(s) adicionado(s) à lista.`)
       } else {
         try {
           toast.info(`Anexando ${pastedFiles.length} arquivo(s)...`)
           const pbData = new FormData()
+
+          // Keep existing files
+          const existingFiles = (task as any)?.files || []
+          existingFiles.forEach((f: string) => pbData.append('files', f))
+
+          // Add new pasted files
           pastedFiles.forEach((f) => pbData.append('files', f))
 
           const pbRecord = await pb.collection('tasks').update(selectedTaskId, pbData)
@@ -135,7 +149,12 @@ export function TaskDetailSheet() {
           toast.success('Arquivo(s) anexado(s) com sucesso!')
         } catch (err: any) {
           console.error('Error pasting files:', err)
-          toast.error('Erro ao anexar arquivo(s).')
+          const errors = extractFieldErrors(err)
+          if (errors.files) {
+            toast.error(`Erro: ${errors.files}`)
+          } else {
+            toast.error('Erro ao anexar arquivo(s). Verifique o formato e o tamanho.')
+          }
         }
       }
     }
@@ -146,7 +165,7 @@ export function TaskDetailSheet() {
     return () => {
       document.removeEventListener('paste', handlePaste)
     }
-  }, [selectedTaskId, isEditing, updateTask])
+  }, [selectedTaskId, isEditing, updateTask, task])
 
   if (!task) return null
 
@@ -176,7 +195,20 @@ export function TaskDetailSheet() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      setFiles((prev) => [...prev, ...Array.from(e.target.files!)])
+      const newFiles = Array.from(e.target.files)
+      const MAX_FILE_SIZE = 5 * 1024 * 1024
+      const validFiles = newFiles.filter((f) => f.size <= MAX_FILE_SIZE)
+      const invalidFiles = newFiles.filter((f) => f.size > MAX_FILE_SIZE)
+
+      if (invalidFiles.length > 0) {
+        toast.error(
+          `${invalidFiles.length} arquivo(s) excede(m) o limite de 5MB e não foram adicionados.`,
+        )
+      }
+
+      if (validFiles.length > 0) {
+        setFiles((prev) => [...prev, ...validFiles])
+      }
     }
   }
 
@@ -205,8 +237,12 @@ export function TaskDetailSheet() {
       pbData.append('board_id', (task as any).board_id || task.boardId || '')
       pbData.append('column_id', (task as any).column_id || task.columnId || '')
 
+      // PocketBase requires passing all files we want to KEEP as strings, plus the NEW files.
+      const filesToKeep = ((task as any).files || []).filter(
+        (f: string) => !filesToRemove.includes(f),
+      )
+      filesToKeep.forEach((f: string) => pbData.append('files', f))
       files.forEach((f) => pbData.append('files', f))
-      filesToRemove.forEach((f) => pbData.append('files-', f))
 
       let pbRecord
       try {
@@ -281,7 +317,7 @@ export function TaskDetailSheet() {
             )}
           </div>
 
-          <ScrollArea className="flex-1 kanban-scrollbar">
+          <div className="flex-1 overflow-y-auto kanban-scrollbar">
             <div className="p-6">
               {!isEditing ? (
                 <>
@@ -641,13 +677,28 @@ export function TaskDetailSheet() {
                                   style={{ width: '64px', height: '64px' }}
                                 >
                                   {isImage ? (
-                                    <img
-                                      src={fileUrl}
-                                      className="w-full h-full object-cover"
-                                      alt="Anexo existente"
-                                    />
+                                    <div
+                                      className="w-full h-full cursor-pointer relative"
+                                      onClick={() => setPreviewImage(fileUrl)}
+                                    >
+                                      <img
+                                        src={fileUrl}
+                                        className="w-full h-full object-cover"
+                                        alt="Anexo existente"
+                                      />
+                                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <ZoomIn className="h-4 w-4 text-white" />
+                                      </div>
+                                    </div>
                                   ) : (
-                                    <FileIcon className="h-8 w-8 text-muted-foreground" />
+                                    <div className="w-full h-full flex flex-col items-center justify-center cursor-default">
+                                      <FileIcon className="h-6 w-6 text-muted-foreground" />
+                                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none flex items-center justify-center">
+                                        <span className="text-[10px] text-white truncate max-w-[50px] px-1">
+                                          {filename}
+                                        </span>
+                                      </div>
+                                    </div>
                                   )}
                                   <button
                                     type="button"
@@ -656,17 +707,13 @@ export function TaskDetailSheet() {
                                   >
                                     <X className="h-3 w-3" />
                                   </button>
-                                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none flex items-center justify-center">
-                                    <span className="text-[10px] text-white truncate max-w-[50px] px-1">
-                                      {filename}
-                                    </span>
-                                  </div>
                                 </div>
                               )
                             })}
                           {/* New files pending upload */}
                           {files.map((f, i) => {
                             const isImage = f.type.startsWith('image/')
+                            const objectUrl = isImage ? URL.createObjectURL(f) : ''
                             return (
                               <div
                                 key={i}
@@ -674,11 +721,19 @@ export function TaskDetailSheet() {
                                 style={{ width: '64px', height: '64px' }}
                               >
                                 {isImage ? (
-                                  <img
-                                    src={URL.createObjectURL(f)}
-                                    className="w-full h-full object-cover"
-                                    alt="Novo anexo"
-                                  />
+                                  <div
+                                    className="w-full h-full cursor-pointer relative"
+                                    onClick={() => setPreviewImage(objectUrl)}
+                                  >
+                                    <img
+                                      src={objectUrl}
+                                      className="w-full h-full object-cover"
+                                      alt="Novo anexo"
+                                    />
+                                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                      <ZoomIn className="h-4 w-4 text-white" />
+                                    </div>
+                                  </div>
                                 ) : (
                                   <FileIcon className="h-8 w-8 text-muted-foreground" />
                                 )}
@@ -689,11 +744,13 @@ export function TaskDetailSheet() {
                                 >
                                   <X className="h-3 w-3" />
                                 </button>
-                                <div className="absolute bottom-0 inset-x-0 bg-primary/80 py-0.5 px-1 z-10">
-                                  <p className="text-[8px] text-primary-foreground text-center truncate">
-                                    {f.name}
-                                  </p>
-                                </div>
+                                {!isImage && (
+                                  <div className="absolute bottom-0 inset-x-0 bg-primary/80 py-0.5 px-1 z-10">
+                                    <p className="text-[8px] text-primary-foreground text-center truncate">
+                                      {f.name}
+                                    </p>
+                                  </div>
+                                )}
                               </div>
                             )
                           })}
@@ -773,7 +830,7 @@ export function TaskDetailSheet() {
                 </div>
               </>
             )}
-          </ScrollArea>
+          </div>
 
           {isEditing && (
             <DialogFooter className="p-4 border-t bg-muted/50 sm:justify-end gap-2">
