@@ -76,7 +76,7 @@ export function Layout() {
   ]
 
   if (user?.is_admin) {
-    navItems.push({ name: 'API Docs', path: '/admin/docs', icon: Terminal })
+    navItems.push({ name: 'Documentação', path: '/admin/docs', icon: Terminal })
   }
 
   return (

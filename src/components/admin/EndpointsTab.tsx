@@ -16,12 +16,12 @@ export function EndpointsTab({ boards, columns, users }: EndpointsTabProps) {
   }
 
   const examplePayload = {
-    title: 'Integrate Payment Gateway',
-    description: 'Implement Stripe for checkout',
-    column_id: columns[0]?.id || 'COLUMN_ID',
-    board_id: boards[0]?.id || 'BOARD_ID',
-    priority: 'alta',
-    responsible_id: users[0]?.id || 'USER_ID',
+    board_id: boards[0]?.id || 'BOARD_ID_HERE',
+    column_id: columns[0]?.id || 'COLUMN_ID_HERE',
+    title: 'Task Title',
+    description: 'Task Description',
+    priority: 'media',
+    responsible_id: users[0]?.id || 'USER_ID_HERE',
   }
 
   return (
@@ -60,10 +60,10 @@ export function EndpointsTab({ boards, columns, users }: EndpointsTabProps) {
                 <code>
                   {JSON.stringify(
                     {
+                      board_id: 'string (required)',
+                      column_id: 'string (required)',
                       title: 'string (required)',
                       description: 'string',
-                      column_id: 'string (required)',
-                      board_id: 'string (required)',
                       priority: 'string (baixa|media|alta|urgente)',
                       responsible_id: 'string',
                     },
@@ -80,10 +80,10 @@ export function EndpointsTab({ boards, columns, users }: EndpointsTabProps) {
                   copyToClipboard(
                     JSON.stringify(
                       {
+                        board_id: 'string (required)',
+                        column_id: 'string (required)',
                         title: 'string (required)',
                         description: 'string',
-                        column_id: 'string (required)',
-                        board_id: 'string (required)',
                         priority: 'string (baixa|media|alta|urgente)',
                         responsible_id: 'string',
                       },
