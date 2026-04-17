@@ -183,4 +183,10 @@ export function Layout() {
           <SidebarTrigger />
           <div className="flex-1" />
         </header>
-        <main className="fl
+        <main className="flex-1 overflow-auto relative">
+          <Outlet />
+        </main>
+      </SidebarInset>
+    </SidebarProvider>
+  )
+}

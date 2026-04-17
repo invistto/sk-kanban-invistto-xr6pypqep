@@ -58,4 +58,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signIn = async (email: string, password: string) => {
     try {
       await pb.collection('users').authWithPassword(email, password)
-      ret
+      return { error: null }
+    } catch (error) {
+      return { error }
+    }
+  }
+
+  const signOut = () => {
+    pb.authStore.clear()
+  }
+
+  return (
+    <AuthContext.Provider value={{ user, signUp, signIn, signOut, loading }}>
+      {children}
+    </AuthContext.Provider>
+  )
+}
