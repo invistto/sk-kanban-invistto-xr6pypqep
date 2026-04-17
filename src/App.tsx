@@ -15,11 +15,20 @@ import { AuthProvider, useAuth } from './hooks/use-auth'
 import AuthPage from './pages/Auth'
 import { Navigate } from 'react-router-dom'
 import { TaskDetailSheet } from './components/TaskDetailSheet'
+import AdminDocs from './pages/AdminDocs'
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth()
   if (loading) return null
   if (!user) return <Navigate to="/auth" replace />
+  return <>{children}</>
+}
+
+const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading } = useAuth()
+  if (loading) return null
+  if (!user) return <Navigate to="/auth" replace />
+  if (!user.is_admin) return <Navigate to="/" replace />
   return <>{children}</>
 }
 
@@ -45,6 +54,14 @@ const App = () => (
               <Route path="/calendar" element={<CalendarView />} />
               <Route path="/timeline" element={<TimelineView />} />
               <Route path="/settings" element={<Settings />} />
+              <Route
+                path="/admin/docs"
+                element={
+                  <AdminRoute>
+                    <AdminDocs />
+                  </AdminRoute>
+                }
+              />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
