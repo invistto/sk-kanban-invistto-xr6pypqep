@@ -190,30 +190,43 @@ export function TaskDetailSheet() {
   return (
     <Dialog open={!!selectedTaskId} onOpenChange={(open) => !open && setSelectedTaskId(null)}>
       <DialogContent className="sm:max-w-2xl p-0 overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="px-6 py-4 border-b shrink-0 bg-background z-10 relative">
+          {!isEditing ? (
+            <DialogHeader className="flex flex-row items-start justify-between space-y-0 pr-6">
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="font-normal">
+                    {column?.title}
+                  </Badge>
+                  <Badge variant="outline" className={priorityColors[task.priority]}>
+                    {priorityLabels[task.priority]}
+                  </Badge>
+                </div>
+                <DialogTitle className="text-xl font-bold leading-tight text-left">
+                  {task.title}
+                </DialogTitle>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsEditing(true)}
+                className="shrink-0 mt-0"
+              >
+                <Edit2 className="h-4 w-4 mr-2" />
+                Editar
+              </Button>
+            </DialogHeader>
+          ) : (
+            <DialogHeader>
+              <DialogTitle>Editar Tarefa</DialogTitle>
+            </DialogHeader>
+          )}
+        </div>
+
         <ScrollArea className="flex-1 kanban-scrollbar">
           <div className="p-6">
             {!isEditing ? (
               <>
-                <DialogHeader className="mb-6 flex flex-row items-start justify-between">
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Badge variant="secondary" className="font-normal">
-                        {column?.title}
-                      </Badge>
-                      <Badge variant="outline" className={priorityColors[task.priority]}>
-                        {priorityLabels[task.priority]}
-                      </Badge>
-                    </div>
-                    <DialogTitle className="text-xl font-bold leading-tight">
-                      {task.title}
-                    </DialogTitle>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
-                    <Edit2 className="h-4 w-4 mr-2" />
-                    Editar
-                  </Button>
-                </DialogHeader>
-
                 <div className="grid gap-6">
                   <div className="grid grid-cols-4 items-center gap-4">
                     <div className="text-sm text-muted-foreground flex items-center gap-2 col-span-1">
@@ -364,9 +377,6 @@ export function TaskDetailSheet() {
               </>
             ) : (
               <>
-                <DialogHeader className="mb-6">
-                  <DialogTitle>Editar Tarefa</DialogTitle>
-                </DialogHeader>
                 <div className="space-y-5">
                   <div>
                     <label className="text-sm font-medium mb-1.5 block">
