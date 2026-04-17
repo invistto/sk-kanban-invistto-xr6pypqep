@@ -12,8 +12,10 @@ import {
 } from '@/components/ui/select'
 import { ColumnManager } from './ColumnManager'
 import { BoardMembers } from './BoardMembers'
+import { useAuth } from '@/hooks/use-auth'
 
 export function BoardConfig() {
+  const { user } = useAuth()
   const { activeBoardId, setActiveBoardId, boards, updateBoard } = useProject()
   const { toast } = useToast()
   const activeBoard = boards.find((b) => b.id === activeBoardId)
@@ -67,7 +69,14 @@ export function BoardConfig() {
           </Select>
         </div>
 
-        <h2 className="text-lg font-medium mb-4">Nome do Quadro</h2>
+        <div className="flex items-center gap-3 mb-4">
+          <h2 className="text-lg font-medium">Nome do Quadro</h2>
+          {user?.is_admin && activeBoard && (
+            <span className="text-xs font-normal text-muted-foreground font-mono bg-muted px-2 py-1 rounded select-all">
+              ID: {activeBoard.id}
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-3">
           <Input
             value={name}

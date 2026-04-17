@@ -20,8 +20,10 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { UserPlus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
+import { useAuth } from '@/hooks/use-auth'
 
 export function BoardMembers() {
+  const { user } = useAuth()
   const { activeBoardId, boards, members, updateBoard } = useProject()
   const { toast } = useToast()
   const [selectedUser, setSelectedUser] = useState<string>('')
@@ -82,7 +84,14 @@ export function BoardMembers() {
             <SelectContent>
               {availableUsers.map((u) => (
                 <SelectItem key={u.id} value={u.id}>
-                  {u.name || u.email}
+                  <div className="flex flex-col">
+                    <span>{u.name || u.email}</span>
+                    {user?.is_admin && (
+                      <span className="text-[10px] text-muted-foreground font-mono">
+                        ID: {u.id}
+                      </span>
+                    )}
+                  </div>
                 </SelectItem>
               ))}
               {availableUsers.length === 0 && (
@@ -121,7 +130,14 @@ export function BoardMembers() {
                       {(u.name || u.email).substring(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="font-medium">{u.name || u.email}</span>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{u.name || u.email}</span>
+                    {user?.is_admin && (
+                      <span className="text-[10px] text-muted-foreground font-mono select-all">
+                        ID: {u.id}
+                      </span>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell>
                   <Badge

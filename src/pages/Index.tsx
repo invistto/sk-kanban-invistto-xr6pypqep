@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useProject } from '@/store/project-context'
+import { useAuth } from '@/hooks/use-auth'
 import { TaskCard } from '@/components/TaskCard'
 import { Button } from '@/components/ui/button'
 import { Plus, MoreHorizontal } from 'lucide-react'
@@ -18,6 +19,7 @@ import { useEffect } from 'react'
 import { CreateTaskDialog } from '@/components/CreateTaskDialog'
 
 export default function Index() {
+  const { user } = useAuth()
   const {
     boards,
     activeBoardId,
@@ -140,7 +142,14 @@ export default function Index() {
         defaultColumnId={addingToColumn || undefined}
       />
       <div className="px-6 py-4 flex-shrink-0 flex items-center justify-between border-b bg-background/50">
-        <h1 className="text-2xl font-bold tracking-tight">{activeBoard?.name || 'Quadro'}</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold tracking-tight">{activeBoard?.name || 'Quadro'}</h1>
+          {user?.is_admin && activeBoard && (
+            <span className="text-xs text-muted-foreground font-mono bg-muted px-2 py-1 rounded select-all">
+              ID: {activeBoard.id}
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm">
             Filtros
@@ -163,11 +172,18 @@ export default function Index() {
                 onDragOver={handleDragOver}
               >
                 <div className="flex items-center justify-between p-3 px-4 cursor-grab active:cursor-grabbing">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-sm">{column.name}</h3>
-                    <span className="flex h-5 items-center justify-center rounded-full bg-muted-foreground/20 px-2 text-xs font-medium text-muted-foreground">
-                      {columnTasks.length}
-                    </span>
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-sm">{column.name}</h3>
+                      <span className="flex h-5 items-center justify-center rounded-full bg-muted-foreground/20 px-2 text-xs font-medium text-muted-foreground">
+                        {columnTasks.length}
+                      </span>
+                    </div>
+                    {user?.is_admin && (
+                      <span className="text-[10px] text-muted-foreground font-mono select-all">
+                        ID: {column.id}
+                      </span>
+                    )}
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>

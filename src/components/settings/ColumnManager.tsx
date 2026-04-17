@@ -6,8 +6,18 @@ import { useState, useEffect } from 'react'
 import { useToast } from '@/hooks/use-toast'
 import pb from '@/lib/pocketbase/client'
 import { extractFieldErrors, getErrorMessage } from '@/lib/pocketbase/errors'
+import { useAuth } from '@/hooks/use-auth'
 
-function ColumnRow({ col, index, onUpdate, onDelete, onDragStart, onDragOver, onDrop }: any) {
+function ColumnRow({
+  col,
+  index,
+  onUpdate,
+  onDelete,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  isAdmin,
+}: any) {
   const [name, setName] = useState(col.name)
 
   const handleBlur = () => {
@@ -30,13 +40,20 @@ function ColumnRow({ col, index, onUpdate, onDelete, onDragStart, onDragOver, on
       <div className="cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground p-1">
         <GripVertical className="h-5 w-5" />
       </div>
-      <Input
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        onBlur={handleBlur}
-        onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-        className="max-w-md bg-transparent"
-      />
+      <div className="flex-1 max-w-md flex flex-col gap-1">
+        <Input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onBlur={handleBlur}
+          onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+          className="w-full bg-transparent"
+        />
+        {isAdmin && (
+          <span className="text-[10px] text-muted-foreground font-mono select-all ml-1">
+            ID: {col.id}
+          </span>
+        )}
+      </div>
       <Button
         variant="ghost"
         size="icon"
@@ -50,6 +67,7 @@ function ColumnRow({ col, index, onUpdate, onDelete, onDragStart, onDragOver, on
 }
 
 export function ColumnManager() {
+  const { user } = useAuth()
   const { activeBoardId, columns, updateColumn, deleteColumn, reorderColumns } = useProject()
   const { toast } = useToast()
   const [newColName, setNewColName] = useState('')
@@ -142,6 +160,7 @@ export function ColumnManager() {
             key={col.id}
             col={col}
             index={i}
+            isAdmin={user?.is_admin}
             onUpdate={updateColumn}
             onDelete={deleteColumn}
             onDragStart={(e: any) => {
