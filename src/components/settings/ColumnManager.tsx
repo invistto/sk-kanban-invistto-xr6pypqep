@@ -1,7 +1,7 @@
 import { useProject, Column } from '@/store/project-context'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { GripVertical, Trash2, Plus, Loader2 } from 'lucide-react'
+import { GripVertical, Trash2, Plus, Loader2, Copy } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useToast } from '@/hooks/use-toast'
 import pb from '@/lib/pocketbase/client'
@@ -17,6 +17,7 @@ function ColumnRow({
   onDragOver,
   onDrop,
   isAdmin,
+  onCopyId,
 }: any) {
   const [name, setName] = useState(col.name)
 
@@ -49,9 +50,23 @@ function ColumnRow({
           className="w-full bg-transparent"
         />
         {isAdmin && (
-          <span className="text-[10px] text-muted-foreground font-mono select-all ml-1">
-            ID: {col.id}
-          </span>
+          <div className="flex items-center gap-1 ml-1 mt-0.5">
+            <span className="text-[10px] text-muted-foreground font-mono select-all">
+              ID: {col.id}
+            </span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                e.preventDefault()
+                if (onCopyId) onCopyId(col.id)
+              }}
+              className="text-muted-foreground hover:text-foreground"
+              title="Copiar ID"
+            >
+              <Copy className="h-3 w-3" />
+            </button>
+          </div>
         )}
       </div>
       <Button
@@ -177,6 +192,10 @@ export function ColumnManager() {
               setDraggedIndex(i)
             }}
             onDrop={handleDrop}
+            onCopyId={(id: string) => {
+              navigator.clipboard.writeText(id)
+              toast({ title: 'ID copiado!' })
+            }}
           />
         ))}
       </div>

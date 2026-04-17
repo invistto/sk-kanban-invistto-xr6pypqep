@@ -3,7 +3,7 @@ import { useProject } from '@/store/project-context'
 import { useAuth } from '@/hooks/use-auth'
 import { TaskCard } from '@/components/TaskCard'
 import { Button } from '@/components/ui/button'
-import { Plus, MoreHorizontal } from 'lucide-react'
+import { Plus, MoreHorizontal, Copy } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import {
   DropdownMenu,
@@ -28,6 +28,7 @@ export default function Index() {
     moveTask,
     addColumn,
     reorderColumns,
+    updateTask,
   } = useProject()
   const [tasks, setTasks] = useState(contextTasks)
 
@@ -50,9 +51,9 @@ export default function Index() {
         return [...prev, mapRecordToTask(e.record) as any]
       })
     } else if (e.action === 'update') {
-      setTasks((prev) =>
-        prev.map((m) => (m.id === e.record.id ? { ...m, ...mapRecordToTask(e.record) } : m)),
-      )
+      const updatedTask = mapRecordToTask(e.record)
+      setTasks((prev) => prev.map((m) => (m.id === e.record.id ? { ...m, ...updatedTask } : m)))
+      updateTask(e.record.id, updatedTask)
     } else if (e.action === 'delete') {
       setTasks((prev) => prev.filter((m) => m.id !== e.record.id))
     }
@@ -145,9 +146,24 @@ export default function Index() {
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold tracking-tight">{activeBoard?.name || 'Quadro'}</h1>
           {user?.is_admin && activeBoard && (
-            <span className="text-xs text-muted-foreground font-mono bg-muted px-2 py-1 rounded select-all">
-              ID: {activeBoard.id}
-            </span>
+            <div className="flex items-center gap-1 bg-muted px-2 py-1 rounded">
+              <span className="text-xs text-muted-foreground font-mono select-all">
+                ID: {activeBoard.id}
+              </span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  e.preventDefault()
+                  navigator.clipboard.writeText(activeBoard.id)
+                  toast({ title: 'ID copiado!' })
+                }}
+                className="text-muted-foreground hover:text-foreground ml-1"
+                title="Copiar ID"
+              >
+                <Copy className="h-3 w-3" />
+              </button>
+            </div>
           )}
         </div>
         <div className="flex items-center gap-2">
@@ -180,9 +196,24 @@ export default function Index() {
                       </span>
                     </div>
                     {user?.is_admin && (
-                      <span className="text-[10px] text-muted-foreground font-mono select-all">
-                        ID: {column.id}
-                      </span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] text-muted-foreground font-mono select-all">
+                          ID: {column.id}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            e.preventDefault()
+                            navigator.clipboard.writeText(column.id)
+                            toast({ title: 'ID copiado!' })
+                          }}
+                          className="text-muted-foreground hover:text-foreground"
+                          title="Copiar ID"
+                        >
+                          <Copy className="h-3 w-3" />
+                        </button>
+                      </div>
                     )}
                   </div>
                   <DropdownMenu>

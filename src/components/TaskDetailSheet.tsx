@@ -22,6 +22,7 @@ import {
   ZoomOut,
   RefreshCcw,
   File as FileIcon,
+  Copy,
 } from 'lucide-react'
 import { priorityColors, priorityLabels } from './TaskCard'
 import { format } from 'date-fns'
@@ -45,6 +46,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import pb from '@/lib/pocketbase/client'
 import { extractFieldErrors } from '@/lib/pocketbase/errors'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { useRealtime } from '@/hooks/use-realtime'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -102,6 +104,25 @@ export function TaskDetailSheet() {
       setIsEditing(false)
     }
   }, [task])
+
+  // Real-time updates for comments specifically
+  useRealtime(
+    'comments',
+    (e) => {
+      if (e.action === 'create' && e.record.task_id === selectedTaskId) {
+        const currentTask = tasks.find((t) => t.id === selectedTaskId)
+        if (currentTask) {
+          const exists = currentTask.comments?.find((c: any) => c.id === e.record.id)
+          if (!exists) {
+            updateTask(selectedTaskId, {
+              comments: [...(currentTask.comments || []), e.record],
+            })
+          }
+        }
+      }
+    },
+    !!selectedTaskId,
+  )
 
   // Reset zoom when opening/closing preview
   useEffect(() => {
@@ -364,9 +385,24 @@ export function TaskDetailSheet() {
                                     {m.name}
                                   </div>
                                   {user?.is_admin && (
-                                    <span className="text-[10px] text-muted-foreground font-mono ml-7 select-all">
-                                      ID: {m.id}
-                                    </span>
+                                    <div className="flex items-center gap-1 ml-7 mt-0.5">
+                                      <span className="text-[10px] text-muted-foreground font-mono select-all">
+                                        ID: {m.id}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          e.preventDefault()
+                                          navigator.clipboard.writeText(m.id)
+                                          toast.success('ID copiado!')
+                                        }}
+                                        className="text-muted-foreground hover:text-foreground"
+                                        title="Copiar ID"
+                                      >
+                                        <Copy className="h-3 w-3" />
+                                      </button>
+                                    </div>
                                   )}
                                 </div>
                               </SelectItem>
@@ -573,9 +609,24 @@ export function TaskDetailSheet() {
                                     {m.name}
                                   </div>
                                   {user?.is_admin && (
-                                    <span className="text-[10px] text-muted-foreground font-mono ml-7 select-all">
-                                      ID: {m.id}
-                                    </span>
+                                    <div className="flex items-center gap-1 ml-7 mt-0.5">
+                                      <span className="text-[10px] text-muted-foreground font-mono select-all">
+                                        ID: {m.id}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          e.preventDefault()
+                                          navigator.clipboard.writeText(m.id)
+                                          toast.success('ID copiado!')
+                                        }}
+                                        className="text-muted-foreground hover:text-foreground"
+                                        title="Copiar ID"
+                                      >
+                                        <Copy className="h-3 w-3" />
+                                      </button>
+                                    </div>
                                   )}
                                 </div>
                               </SelectItem>
@@ -808,9 +859,24 @@ export function TaskDetailSheet() {
                                     {author?.name || 'Usuário'}
                                   </span>
                                   {user?.is_admin && author && (
-                                    <span className="text-[10px] text-muted-foreground font-mono select-all">
-                                      ID: {author.id}
-                                    </span>
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-[10px] text-muted-foreground font-mono select-all">
+                                        ID: {author.id}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          e.preventDefault()
+                                          navigator.clipboard.writeText(author.id)
+                                          toast.success('ID copiado!')
+                                        }}
+                                        className="text-muted-foreground hover:text-foreground"
+                                        title="Copiar ID"
+                                      >
+                                        <Copy className="h-3 w-3" />
+                                      </button>
+                                    </div>
                                   )}
                                 </div>
                                 <span className="text-xs text-muted-foreground flex items-center gap-1">

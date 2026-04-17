@@ -18,7 +18,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { UserPlus, Trash2 } from 'lucide-react'
+import { UserPlus, Trash2, Copy } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/hooks/use-auth'
 
@@ -87,9 +87,24 @@ export function BoardMembers() {
                   <div className="flex flex-col">
                     <span>{u.name || u.email}</span>
                     {user?.is_admin && (
-                      <span className="text-[10px] text-muted-foreground font-mono">
-                        ID: {u.id}
-                      </span>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <span className="text-[10px] text-muted-foreground font-mono">
+                          ID: {u.id}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            e.preventDefault()
+                            navigator.clipboard.writeText(u.id)
+                            toast({ title: 'ID copiado!' })
+                          }}
+                          className="text-muted-foreground hover:text-foreground"
+                          title="Copiar ID"
+                        >
+                          <Copy className="h-3 w-3" />
+                        </button>
+                      </div>
                     )}
                   </div>
                 </SelectItem>
@@ -133,9 +148,24 @@ export function BoardMembers() {
                   <div className="flex flex-col">
                     <span className="font-medium">{u.name || u.email}</span>
                     {user?.is_admin && (
-                      <span className="text-[10px] text-muted-foreground font-mono select-all">
-                        ID: {u.id}
-                      </span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] text-muted-foreground font-mono select-all">
+                          ID: {u.id}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            e.preventDefault()
+                            navigator.clipboard.writeText(u.id)
+                            toast({ title: 'ID copiado!' })
+                          }}
+                          className="text-muted-foreground hover:text-foreground"
+                          title="Copiar ID"
+                        >
+                          <Copy className="h-3 w-3" />
+                        </button>
+                      </div>
                     )}
                   </div>
                 </TableCell>

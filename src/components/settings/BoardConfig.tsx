@@ -2,7 +2,7 @@ import { useProject } from '@/store/project-context'
 import { Input } from '@/components/ui/input'
 import { useState, useEffect } from 'react'
 import { useToast } from '@/hooks/use-toast'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Copy } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -72,9 +72,22 @@ export function BoardConfig() {
         <div className="flex items-center gap-3 mb-4">
           <h2 className="text-lg font-medium">Nome do Quadro</h2>
           {user?.is_admin && activeBoard && (
-            <span className="text-xs font-normal text-muted-foreground font-mono bg-muted px-2 py-1 rounded select-all">
-              ID: {activeBoard.id}
-            </span>
+            <div className="flex items-center gap-1 bg-muted px-2 py-1 rounded">
+              <span className="text-xs font-normal text-muted-foreground font-mono select-all">
+                ID: {activeBoard.id}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(activeBoard.id)
+                  toast({ title: 'ID copiado!' })
+                }}
+                className="text-muted-foreground hover:text-foreground ml-1"
+                title="Copiar ID"
+              >
+                <Copy className="h-3 w-3" />
+              </button>
+            </div>
           )}
         </div>
         <div className="flex items-center gap-3">
