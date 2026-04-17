@@ -36,6 +36,7 @@ import {
   Loader2,
   LogOut,
   Clock,
+  Terminal,
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -73,6 +74,10 @@ export function Layout() {
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { name: 'Configurações', path: '/settings', icon: Settings },
   ]
+
+  if (user?.is_admin) {
+    navItems.push({ name: 'API Docs', path: '/admin/docs', icon: Terminal })
+  }
 
   return (
     <SidebarProvider>
